@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from src.data_manager import DataManager
 from src.email_utils import send_confirmation_email
 from src.config import WEEK_DATES, REVEAL_DATES_UTC
+from src.auth import is_email_allowed
 
 def show_page(data_manager: DataManager):
     st.title("📝 Submit Your Weekly Picks")
@@ -17,16 +18,26 @@ def show_page(data_manager: DataManager):
     if selection == "➕ New Player":
         with st.form("new_player_form"):
             new_name = st.text_input("Your Name:")
-            new_email = st.text_input("Your Email (for confirmations):")
+            new_email = st.text_input("Your Email Address:")
             if st.form_submit_button("Create Profile"):
                 if new_name and new_email and '@' in new_email and '.' in new_email:
-                    user_id = f"user_{len(data.get('users', {})) + 1}"
-                    data['users'][user_id] = {'name': new_name, 'email': new_email}
-                    data_manager.save_data('users')
-                    st.session_state.selected_user = user_id
-                    st.success(f"Profile for {new_name} created!")
-                    st.rerun()
-                else: st.error("Please enter a valid name and email address.")
+                    if is_email_allowed(new_email):
+                        # Check if email is already registered
+                        email_exists = any(user.get('email', '').lower() == new_email.lower() for user in data.get('users', {}).values())
+                        if email_exists:
+                            st.error("This email address is already registered. Please select your profile from the dropdown menu.")
+                        else:
+                            user_id = f"user_{len(data.get('users', {})) + 1}"
+                            data['users'][user_id] = {'name': new_name, 'email': new_email}
+                            data_manager.save_data('users')
+                            st.session_state.selected_user = user_id
+                            st.success(f"Profile for {new_name} created!")
+                            st.rerun()
+                    else:
+                        st.error("This email address has not been approved for the league. Please contact the commissioner to be added.")
+                else: 
+                    st.error("Please enter a valid name and email address.")
+
     elif selection: st.session_state.selected_user = selection
 
     if st.session_state.selected_user:
@@ -80,3 +91,4 @@ def show_page(data_manager: DataManager):
             rain(emoji="🍰", font_size=54, falling_speed=3, animation_length="5s")
 
             if user_email: send_confirmation_email(user_email, user_name, week_display, picks_data)
+
