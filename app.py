@@ -3,7 +3,7 @@ import pandas as pd
 import json
 import os
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, List
 from email.message import EmailMessage
 from email.utils import formataddr
 import smtplib
