@@ -28,13 +28,20 @@ def calculate_user_scores(data: Dict) -> Dict:
         for week, picks in user_picks.items():
             results = data.get('results', {}).get(week)
             if results:
-                if picks.get('star_baker') == results.get('star_baker'): weekly_points += 5
-                if picks.get('eliminated_baker') == results.get('eliminated_baker'): weekly_points += 5
-                if picks.get('technical_winner') == results.get('technical_winner'): weekly_points += 3
-                if picks.get('handshake_prediction') and results.get('handshake_given'): weekly_points += 10
-                if picks.get('star_baker') == results.get('eliminated_baker'): weekly_points -= 5
-                if picks.get('eliminated_baker') == results.get('star_baker'): weekly_points -= 5
-                if picks.get('handshake_prediction') and not results.get('handshake_given'): weekly_points -= 10
+                if picks.get('star_baker') == results.get('star_baker'):
+                    weekly_points += 5
+                if picks.get('eliminated_baker') == results.get('eliminated_baker'):
+                    weekly_points += 5
+                if picks.get('technical_winner') == results.get('technical_winner'):
+                    weekly_points += 3
+                if picks.get('handshake_prediction') and results.get('handshake_given'):
+                    weekly_points += 10
+                if picks.get('star_baker') == results.get('eliminated_baker'):
+                    weekly_points -= 5
+                if picks.get('eliminated_baker') == results.get('star_baker'):
+                    weekly_points -= 5
+                if picks.get('handshake_prediction') and not results.get('handshake_given'):
+                    weekly_points -= 10
         
         foresight_points = final_scores.get(user_id, 0)
         
@@ -44,3 +51,4 @@ def calculate_user_scores(data: Dict) -> Dict:
             'total_points': weekly_points + foresight_points
         }
     return scores
+
