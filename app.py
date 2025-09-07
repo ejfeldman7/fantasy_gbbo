@@ -382,13 +382,68 @@ elif page == "⚙️ Admin Panel":
                 st.write(f"- {baker}")
         with tab3:
             st.subheader("Manage Players & Emails")
-            if data['users']:
+            if not data.get('users'):
+                st.info("No players have registered yet.")
+            else:
                 player_df = pd.DataFrame([{
                     'User ID': uid,
                     'Name': uinfo.get('name'),
                     'Email': uinfo.get('email', 'N/A')
                 } for uid, uinfo in data['users'].items()])
                 st.dataframe(player_df, use_container_width=True, hide_index=True)
+                
+                st.subheader("✏️ Edit or Remove a Player")
+                # Create a list of player names for the dropdown
+                player_list = list(data['users'].keys())
+                player_to_edit = st.selectbox(
+                    "Select a player to manage:",
+                    options=[""] + player_list,
+                    format_func=lambda uid: data['users'][uid]['name'] if uid else "--- Select a Player ---"
+                )
+
+                if player_to_edit:
+                    user_info = data['users'][player_to_edit]
+                    
+                    with st.form(f"edit_player_{player_to_edit}"):
+                        st.write(f"**Editing Profile for: {user_info['name']}**")
+                        
+                        new_name = st.text_input("Player Name", value=user_info.get('name', ''))
+                        new_email = st.text_input("Player Email", value=user_info.get('email', ''))
+
+                        # Create columns for the buttons
+                        col1, col2 = st.columns([0.2, 1])
+                        
+                        with col1:
+                            submitted = st.form_submit_button("💾 Save Changes")
+                        
+                        if submitted:
+                            # Update the user's data
+                            data['users'][player_to_edit]['name'] = new_name
+                            data['users'][player_to_edit]['email'] = new_email
+                            save_data('users', data['users'])
+                            st.success(f"✅ Player '{new_name}' has been updated.")
+                            st.rerun()
+
+                    # --- REMOVE PLAYER SECTION ---
+                    with st.expander("🗑️ Remove Player (Permanent)"):
+                        st.warning(f"**Warning:** This will permanently delete **{user_info['name']}** and all of their submitted picks. This action cannot be undone.")
+                        
+                        if st.button(f"DELETE {user_info['name']}'s Profile", type="primary"):
+                            # Remove from users data
+                            del data['users'][player_to_edit]
+                            save_data('users', data['users'])
+
+                            # Also remove their picks to keep data consistent
+                            if player_to_edit in data['picks']:
+                                del data['picks'][player_to_edit]
+                                save_data('picks', data['picks'])
+
+                            st.success(f"🗑️ Player '{user_info['name']}' and all their data have been removed.")
+                            st.rerun()
+
+        with tab4:
+            st.subheader("Data Management")
+            ###
             else:
                 st.info("No players have registered yet.")
         with tab4:
