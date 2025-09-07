@@ -60,7 +60,7 @@ def send_confirmation_email(recipient_email: str, user_name: str, week_display: 
         sender_email = creds["sender_email"]
         sender_password = creds["sender_password"]
     except (KeyError, FileNotFoundError):
-        st.warning("Email credentials not configured in st.secrets. Confirmation email not sent.", icon="⚠️")
+        st.warning("Email credentials not configured. Email not sent. Ensure a `.streamlit/secrets.toml` file exists and is correctly formatted.", icon="⚠️")
         return
 
     msg = EmailMessage()
@@ -344,7 +344,7 @@ elif page == "⚙️ Admin Panel":
     
     if admin_password == "bakeoff2024":
         data = st.session_state.data
-        tab1, tab2, tab3, tab4 = st.tabs(["Episode Results", "Manage Bakers", "Manage Players", "Data Management"])
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["Episode Results", "Manage Bakers", "Manage Players", "Data Management", "🏆 Final Scoring"])
 
         with tab1:
             st.subheader("Enter Episode Results")
