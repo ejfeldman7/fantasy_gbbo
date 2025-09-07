@@ -27,7 +27,7 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("🧁 *May the best Star Predictor win!*")
 
 # --- PAGE ROUTING ---
-# Based on the user's selection, call the appropriate function from the 'pages' module.
+# Based on a user's selection, call the appropriate function from the 'pages' module.
 if page == "🏆 Leaderboard & Stats":
     leaderboard.show_page(data_manager)
 elif page == "📝 Submit Picks":
