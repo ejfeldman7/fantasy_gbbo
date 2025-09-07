@@ -274,8 +274,8 @@ elif page == "📝 Submit Picks":
                 rain(
                     emoji="🍰",
                     font_size=54,
-                    falling_speed=8,
-                    animation_length="10",
+                    falling_speed=20,
+                    animation_length="10s",
                 )
 
                 if user_email:
