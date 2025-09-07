@@ -99,6 +99,7 @@ def send_confirmation_email(recipient_email: str, user_name: str, week_display: 
             <ul>
                 <li><strong>⭐ Star Baker:</strong> {picks.get('star_baker', 'N/A')}</li>
                 <li><strong>🏆 Technical Winner:</strong> {picks.get('technical_winner', 'N/A')}</li>
+                <li><strong>😢 Eliminated Baker:</strong> {picks.get('eliminated_baker', 'N/A')}</li>
                 <li><strong>🤝 Handshake Prediction:</strong> {'Yes' if picks.get('handshake_prediction') else 'No'}</li>
             </ul>
             <h3>Your Season Predictions:</h3>
@@ -166,6 +167,8 @@ def calculate_user_scores(data):
             results = data.get('results', {}).get(week)
             if results:
                 if picks.get('star_baker') == results.get('star_baker'): weekly_points += 5
+                # UPDATED: Add points for guessing the eliminated baker
+                if picks.get('eliminated_baker') == results.get('eliminated_baker'): weekly_points += 5
                 if picks.get('technical_winner') == results.get('technical_winner'): weekly_points += 3
                 if picks.get('handshake_prediction') and results.get('handshake_given'): weekly_points += 10
         
@@ -215,7 +218,6 @@ if page == "🏆 Leaderboard & Stats":
                 for week_key in all_weeks:
                     reveal_date = REVEAL_DATES_UTC.get(week_key)
 
-                    # Only show the expander if the reveal date has passed
                     if reveal_date and now_utc > reveal_date:
                         revealed_weeks_count += 1
                         display_name = WEEK_DATES.get(week_key, f"Week {week_key}")
@@ -230,6 +232,8 @@ if page == "🏆 Leaderboard & Stats":
                                         'Player': player_name,
                                         'Star Baker': picks.get('star_baker', ''),
                                         'Technical': picks.get('technical_winner', ''),
+                                        # UPDATED: Add eliminated baker to the history view
+                                        'Eliminated': picks.get('eliminated_baker', ''),
                                         'Handshake': '✓' if picks.get('handshake_prediction') else '✗',
                                         'Season Winner': picks.get('season_winner', ''),
                                         'Submitted': picks.get('submitted_at', '')[:16] if picks.get('submitted_at') else ''
@@ -271,12 +275,9 @@ elif page == "📝 Submit Picks":
         user_name = data.get('users', {}).get(user_id, {}).get('name', "Player")
         user_email = data.get('users', {}).get(user_id, {}).get('email', "")
         st.success(f"Welcome, **{user_name}**! You're ready to submit your picks.")
-
-        # --- UPDATED: Filter weeks to only show those with open submissions ---
+        
         now_utc = datetime.now(timezone.utc)
-        available_weeks_for_picks = [
-            key for key, reveal_date in REVEAL_DATES_UTC.items() if now_utc < reveal_date
-        ]
+        available_weeks_for_picks = [key for key, reveal_date in REVEAL_DATES_UTC.items() if now_utc < reveal_date]
 
         if not available_weeks_for_picks:
             st.warning("All submission deadlines have passed for this season. No more picks can be made.")
@@ -289,13 +290,9 @@ elif page == "📝 Submit Picks":
 
             st.markdown("""
             Each week you are making two different sets of predictions. 
-            - First, you'll select Star Baker and Technical Winner for next week, with a bonus guess on if a handshake will be awarded.
-            - Second, you'll make a prediction about the end of the season. Who will win? Who will the other two finalists be?
-            You can stick with the same picks from week to week, if those bakers are still active, or you can switch as needed.
-
-            Additionally, if you submit your choices, feel free to come back to this page and submit again. 
-            
-            You should receive an email confirming your submission shortly after hitting submit.
+            - First, you'll select the weekly winners and losers.
+            - Second, you'll make a prediction about the end of the season.
+            You can stick with the same picks from week to week or switch as needed. You can also resubmit your picks any time before the deadline.
             """)
             with st.form(f"picks_week_{selected_week_key}_{user_id}"):
                 col1, col2 = st.columns(2)
@@ -303,6 +300,8 @@ elif page == "📝 Submit Picks":
                     st.subheader("2. Make Your Weekly Predictions")
                     star_baker = st.selectbox("⭐ Who will be Star Baker:", available_bakers, index=available_bakers.index(existing_picks.get('star_baker', available_bakers[0])) if existing_picks.get('star_baker') in available_bakers else 0)
                     technical_winner = st.selectbox("🏆 Who will win the Technical:", available_bakers, index=available_bakers.index(existing_picks.get('technical_winner', available_bakers[0])) if existing_picks.get('technical_winner') in available_bakers else 0)
+                    # UPDATED: Add new selectbox for eliminated baker
+                    eliminated_baker = st.selectbox("😢 Who will be sent home:", available_bakers, index=available_bakers.index(existing_picks.get('eliminated_baker', available_bakers[0])) if existing_picks.get('eliminated_baker') in available_bakers else 0)
                     handshake_prediction = st.checkbox("🤝 Will there be a Hollywood Handshake?", value=existing_picks.get('handshake_prediction', False))
                 with col2:
                     st.subheader("3. Make your End of Season Predictions")
@@ -311,18 +310,14 @@ elif page == "📝 Submit Picks":
                     finalist_2 = st.selectbox("🥈 Finalist B:", available_bakers, index=available_bakers.index(existing_picks.get('finalist_2', available_bakers[2])) if existing_picks.get('finalist_2') in available_bakers else 2)
                 
                 if st.form_submit_button("Submit & Lock In Picks"):
-                    picks_data = {'star_baker': star_baker, 'technical_winner': technical_winner, 'handshake_prediction': handshake_prediction, 'season_winner': season_winner, 'finalist_1': finalist_1, 'finalist_2': finalist_2, 'submitted_at': datetime.now().isoformat()}
+                    # UPDATED: Add eliminated baker to the saved data
+                    picks_data = {'star_baker': star_baker, 'technical_winner': technical_winner, 'eliminated_baker': eliminated_baker, 'handshake_prediction': handshake_prediction, 'season_winner': season_winner, 'finalist_1': finalist_1, 'finalist_2': finalist_2, 'submitted_at': datetime.now().isoformat()}
                     data['picks'][user_id][selected_week_key] = picks_data
                     save_data('picks', data['picks'])
                     
                     display_week_name = WEEK_DATES.get(selected_week_key, f"Week {selected_week_key}")
                     st.success(f"✅ Your picks for {display_week_name} have been submitted!")
-                    rain(
-                        emoji="🍰",
-                        font_size=54,
-                        falling_speed=3,
-                        animation_length="5s",
-                    )
+                    rain(emoji="🍰", font_size=54, falling_speed=3, animation_length="5s")
 
                     if user_email:
                         send_confirmation_email(recipient_email=user_email, user_name=user_name, week_display=display_week_name, picks=picks_data)
@@ -334,17 +329,16 @@ elif page == "📖 Info Page":
     st.markdown("""
     On your marks, get set, predict! This season, we’re adding a new layer of fun to our weekly viewing with a fantasy league. 
     The goal is simple: prove you have the best eye for baking talent by accurately predicting both the weekly events and the season's ultimate champions.
-    
-    The game is all about prediction. Each week you'll make a new set of picks, and your foresight will be rewarded with points. May the best Star Predictor win!
     """)
     st.markdown("---")
 
     st.subheader("How to Play: Your Weekly Signature Bake")
     st.markdown("""
     Each week of the competition (starting with Episode 2), you will submit a fresh set of predictions before the episode airs.
-    Your weekly submission must include five predictions:
+    Your weekly submission must now include **six** predictions:
     - **Star Baker**: Who will be the week's top baker?
     - **Technical Challenge Winner**: Who will come in first in the technical?
+    - **Baker Sent Home**: Who will be eliminated from the competition?
     - **Hollywood Handshake**: Will anyone get a handshake? (Optional, high-reward pick).
     - **Predicted Season Winner**: Who do you think will win the entire competition?
     - **Predicted Finalists (x2)**: Who will the other two finalists be?
@@ -358,11 +352,13 @@ elif page == "📖 Info Page":
     
     st.write("#### 1. Weekly Points")
     st.markdown("These are straightforward points for correctly predicting the episode's key events.")
+    # UPDATED: Added Eliminated Baker to the scoring table
     st.markdown("""
     | Correct Prediction         | Points Awarded |
     |----------------------------|----------------|
     | Hollywood Handshake        | 10 points      |
     | Star Baker                 | 5 points       |
+    | Baker Sent Home            | 5 points       |
     | Technical Challenge Winner | 3 points       |
     """)
 
@@ -375,8 +371,8 @@ elif page == "📖 Info Page":
     At the end of the season, we'll go back and award points for every single time you correctly predicted the outcome.
     - **The Formula**: A correct pick is multiplied by a factor that decreases each week. A correct **winner** prediction is worth **10 base points**, and a correct **finalist** is worth **5**.
     - **Example**: Correctly predicting the season winner in Week 2 is worth **90 points** `((11-2) x 10)`. Waiting until the semi-final in Week 9 to make that same correct prediction is only worth **20 points** `((11-9) x 10)`.
-    This is cumulative, so correct predictions in, for example, Weeks 3, 6, 8, and 10 would all be included in your total. 
-
+    This is cumulative, so correct predictions in, for example, Weeks 3, 6, 8, and 10 would all be included in your total.
+    
     This system rewards those who can spot the champion from the very beginning!
     """)
     st.markdown("---")
@@ -483,7 +479,6 @@ elif page == "⚙️ Admin Panel":
         with tab4:
             st.subheader("Data Management")
             if st.button("Download All Data as JSON"):
-                # Ensure final_scores is included in the download
                 full_data = st.session_state.data
                 full_data['final_scores'] = load_data().get('final_scores', {})
                 all_data_str = json.dumps(full_data, indent=2)
@@ -517,22 +512,15 @@ elif page == "⚙️ Admin Panel":
                     if submitted:
                         if final_winner and len(final_finalists) == 2:
                             if final_winner not in final_finalists:
-                                # Run the scoring logic
                                 foresight_scores = run_final_scoring(data, final_winner, final_finalists)
-                                
-                                # Save the scores to the dedicated file
                                 save_data('final_scores', foresight_scores)
-                                
                                 st.session_state.data['final_scores'] = foresight_scores
-                                
-                                st.success("Foresight Points calculated and saved successfully! The main leaderboard is now updated with the final results.")
+                                st.success("Foresight Points calculated and saved successfully! The main leaderboard is now updated.")
                                 st.balloons()
 
-                                # Display the results for confirmation
                                 st.write("### Calculated Foresight Points:")
                                 results_df = pd.DataFrame.from_dict(foresight_scores, orient='index', columns=['Foresight Points'])
                                 results_df.index.name = 'User ID'
-                                # Add player names for clarity
                                 player_names = {uid: uinfo.get('name', 'Unknown') for uid, uinfo in data.get('users', {}).items()}
                                 results_df['Player'] = results_df.index.map(player_names)
                                 st.dataframe(results_df[['Player', 'Foresight Points']].sort_values('Foresight Points', ascending=False), use_container_width=True)
