@@ -18,7 +18,7 @@ if 'data_manager' not in st.session_state:
 data_manager = st.session_state.data_manager
 
 # --- SIDEBAR NAVIGATION ---
-st.sidebar.title("🧁 Fantasy Bake Off")
+st.sidebar.title("🧁 Fantasy Bake Off [Dev]")
 page = st.sidebar.selectbox(
     "Navigate to:",
     ["🏆 Leaderboard & Stats", "📝 Submit Picks", "📖 Info Page", "⚙️ Admin Panel"]
