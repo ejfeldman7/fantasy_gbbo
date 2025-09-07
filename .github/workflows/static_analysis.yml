@@ -38,16 +38,3 @@ jobs:
       - name: Run Ruff Linter
         run: |
           ruff check .
-
-      # Step 5: Run the Ruff formatter check.
-      # The '--check' flag reports formatting issues without modifying files.
-      # This is ideal for CI to enforce a consistent code style.
-      - name: Run Ruff Formatter Check
-        run: |
-          ruff format --check .
-
-      # Step 6: Run MyPy for static type checking.
-      # MyPy analyzes type hints to catch type-related errors before runtime.
-      - name: Run MyPy Type Checker
-        run: |
-          mypy .

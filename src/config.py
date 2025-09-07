@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+
 # Central dictionary for week dates. Update this for a new season.
 WEEK_DATES = {
     "2": "Week 2 (9/12)",
