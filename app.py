@@ -170,6 +170,10 @@ def calculate_user_scores(data):
                 if picks.get('eliminated_baker') == results.get('eliminated_baker'): weekly_points += 5
                 if picks.get('technical_winner') == results.get('technical_winner'): weekly_points += 3
                 if picks.get('handshake_prediction') and results.get('handshake_given'): weekly_points += 10
+
+                if picks.get('star_baker') == results.get('eliminated_baker'): weekly_points -= 5
+                if picks.get('eliminated_baker') == results.get('star_baker'): weekly_points -= 5
+                if picks.get('handshake_prediction') and not results.get('handshake_given'): weekly_points -= 10
         
         # Get pre-calculated foresight points
         foresight_points = final_scores.get(user_id, 0)
@@ -361,14 +365,23 @@ elif page == "📖 Info Page":
     st.markdown("Your grand total will be a combination of two types of points: **Weekly Points** and **Foresight Points**.")
     
     st.write("#### 1. Weekly Points")
-    st.markdown("These are straightforward points for correctly predicting the episode's key events.")
+    st.markdown("""These are straightforward points for correctly predicting the episode's key events.
+    __Note: Points are may be awarded or penalized, as shown below.__
+    __There is no penalty for saying there will be no handshake and one is given.__
+    """)
     st.markdown("""
-    | Correct Prediction         | Points Awarded |
-    |----------------------------|----------------|
-    | Hollywood Handshake        | 10 points      |
-    | Star Baker                 | 5 points       |
-    | Baker Sent Home            | 5 points       |
-    | Technical Challenge Winner | 3 points       |
+    | Correct Prediction                 | Points Awarded |
+    |------------------------------------|----------------|
+    | Handshake Predicted and Given      | 10 points      |
+    | Star Baker                         | 5 points       |
+    | Baker Sent Home                    | 5 points       |
+    | Technical Challenge Winner         | 3 points       |
+
+    | Penalties                          | Points Removed |
+    |------------------------------------|----------------|
+    | Handshake Predicted, None Given    | 10 points      |
+    | Predicted Star Baker is sent home  | 5 points       |
+    | Predicted Baker Sent Home is Star  | 5 points       |
     """)
 
     st.write("#### 2. Foresight Points: The Weighted Bonus")
