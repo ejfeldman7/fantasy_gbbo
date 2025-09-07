@@ -69,7 +69,6 @@ def save_data(data_type, data_to_save):
     with open(filename, 'w') as f:
         json.dump(data_to_save, f, indent=2, default=str)
 
-# --- EMAIL CONFIRMATION FUNCTION ---
 def send_confirmation_email(recipient_email: str, user_name: str, week_display: str, picks: Dict[str, Any]):
     """Sends a confirmation email to the user with their submitted picks."""
     try:
@@ -123,6 +122,49 @@ def send_confirmation_email(recipient_email: str, user_name: str, week_display: 
         st.info(f"A confirmation email has been sent to {recipient_email}.")
     except Exception as e:
         st.error(f"Failed to send confirmation email. Check SMTP credentials. Error: {e}")
+
+
+def send_commissioner_update_email(week_display: str, results: Dict[str, Any], scores_df: pd.DataFrame):
+    """Sends an update email to the commissioner with weekly results and leaderboard."""
+    try:
+        creds = st.secrets["email_credentials"]
+        sender_name, sender_email, sender_password = creds["sender_name"], creds["sender_email"], creds["sender_password"]
+        commissioner_email = sender_email
+    except (KeyError, FileNotFoundError):
+        st.warning("Email credentials not configured. Commissioner update not sent.", icon="⚠️")
+        return
+
+    msg = EmailMessage()
+    msg['Subject'] = f"🏆 Bake Off Weekly Results & Leaderboard - {week_display}"
+    msg['From'] = formataddr((sender_name, sender_email))
+    msg['To'] = commissioner_email
+    scores_html = scores_df.to_html(index=True, border=0, classes="dataframe")
+    body = f"""
+    <html><head><style>
+        body{{font-family:sans-serif;}} .container{{padding:20px;border:1px solid #ddd;border-radius:8px;max-width:600px;}}
+        h2,h3{{color:#333;}} table.dataframe{{border-collapse:collapse;width:100%;margin-bottom:20px;}}
+        table.dataframe th,table.dataframe td{{border:1px solid #ddd;padding:8px;text-align:left;}}
+        table.dataframe th{{background-color:#f2f2f2;}}
+    </style></head><body><div class="container">
+        <h2>Results for {week_display} have been entered!</h2>
+        <h3>Summary of Results:</h3><ul>
+            <li><strong>⭐ Star Baker:</strong> {results.get('star_baker', 'N/A')}</li>
+            <li><strong>🏆 Technical Winner:</strong> {results.get('technical_winner', 'N/A')}</li>
+            <li><strong>😢 Eliminated Baker:</strong> {results.get('eliminated_baker', 'N/A')}</li>
+            <li><strong>🤝 Handshake Given:</strong> {'Yes' if results.get('handshake_given') else 'No'}</li>
+        </ul><h3>Updated Leaderboard:</h3>{scores_html}
+    </div></body></html>
+    """
+    msg.set_content("This is a fallback for plain-text email clients.")
+    msg.add_alternative(body, subtype='html')
+    try:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(sender_email, sender_password)
+            smtp.send_message(msg)
+        st.info(f"An update email has been sent to the commissioner at {commissioner_email}.")
+    except Exception as e:
+        st.error(f"Failed to send commissioner update email. Error: {e}")
+
 
 # --- INITIALIZE SESSION STATE & SCORING LOGIC ---
 if 'data' not in st.session_state:
@@ -438,6 +480,17 @@ elif page == "⚙️ Admin Panel":
                     data['results'][result_week_key] = {'star_baker': star_baker_result, 'technical_winner': technical_winner_result, 'handshake_given': handshake_given, 'eliminated_baker': eliminated_baker, 'updated_at': datetime.now().isoformat()}
                     save_data('results', data['results'])
                     st.success(f"✅ Results for {WEEK_DATES.get(result_week_key)} saved!")
+
+                    updated_scores = calculate_user_scores(data)
+                    leaderboard_data = []
+                    for user_id, user_info in data.get('users', {}).items():
+                        user_score = updated_scores.get(user_id, {'weekly_points': 0, 'foresight_points': 0, 'total_points': 0})
+                        leaderboard_data.append({'Player': user_info.get('name', f'Unknown User ({user_id})'), 'Weekly': user_score['weekly_points'], 'Foresight': user_score['foresight_points'], 'Total': user_score['total_points']})
+                    
+                    if leaderboard_data:
+                        leaderboard_df = pd.DataFrame(leaderboard_data).sort_values('Total', ascending=False)
+                        leaderboard_df.index = leaderboard_df.index + 1
+                        send_commissioner_update_email(week_display=WEEK_DATES.get(result_week_key, f"Week {result_week_key}"), results=results_data, scores_df=leaderboard_df)
 
         with tab2:
             st.subheader("Manage Bakers")
