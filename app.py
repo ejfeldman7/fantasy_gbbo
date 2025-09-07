@@ -18,16 +18,15 @@ st.set_page_config(
 # --- Central dictionary for week dates ---
 # Easily update this for a new season. Dates are based on the 2025 calendar.
 WEEK_DATES = {
-    "2": "Week 2 (9/11)",
-    "3": "Week 3 (9/18)",
-    "4": "Week 4 (9/25)",
-    "5": "Week 5 (10/2)",
-    "6": "Week 6 (10/9)",
-    "7": "Week 7 (10/16)",
-    "8": "Week 8 (10/23)",
-    "9": "Week 9 (10/30)",
-    "10": "Week 10 (11/6)",
-    "11": "Week 11 (11/13)",
+    "2": "Week 2 (9/12)",
+    "3": "Week 3 (9/19)",
+    "4": "Week 4 (9/26)",
+    "5": "Week 5 (10/3)",
+    "6": "Week 6 (10/10)",
+    "7": "Week 7 (10/17)",
+    "8": "Week 8 (10/24)",
+    "9": "Week 9 (10/31)",
+    "10": "Week 10 (11/7)",
 }
 
 # --- DATA PERSISTENCE FUNCTIONS ---
@@ -109,6 +108,34 @@ def send_confirmation_email(recipient_email: str, user_name: str, week_display: 
 # --- INITIALIZE SESSION STATE & SCORING LOGIC ---
 if 'data' not in st.session_state:
     st.session_state.data = load_data()
+
+
+def run_final_scoring(data: Dict, final_winner: str, final_finalists: List[str]) -> Dict[str, int]:
+    """Calculates foresight points for all users based on final season results."""
+    foresight_scores = {user_id: 0 for user_id in data.get('users', {})}
+    
+    for user_id, weekly_picks in data.get('picks', {}).items():
+        for week_str, picks in weekly_picks.items():
+            try:
+                week_num = int(week_str)
+                # Award points for correct winner prediction
+                if picks.get('season_winner') == final_winner:
+                    points = (11 - week_num) * 20
+                    foresight_scores[user_id] += points
+                
+                # Award points for correct finalist predictions
+                if picks.get('finalist_1') in final_finalists:
+                    points = (11 - week_num) * 10
+                    foresight_scores[user_id] += points
+                
+                if picks.get('finalist_2') in final_finalists:
+                    points = (11 - week_num) * 10
+                    foresight_scores[user_id] += points
+            except (ValueError, TypeError):
+                continue # Skip if week is not a valid number
+                
+    return foresight_scores
+
 
 def calculate_user_scores(data):
     scores = {}
@@ -413,6 +440,49 @@ elif page == "⚙️ Admin Panel":
                     st.session_state.data = load_data()
                     st.success("All league data has been reset.")
                     st.rerun()
+
+        with tab5:
+            st.subheader("🏆 Final Season Scoring")
+            st.info("Use this tool **only after the season finale** to calculate final Foresight Points and determine the league winner.")
+            
+            baker_options = data.get('bakers', [])
+            if not baker_options:
+                st.warning("Please add bakers in the 'Manage Bakers' tab before calculating scores.")
+            else:
+                with st.form("final_scoring_form"):
+                    st.write("Select the official season results:")
+                    final_winner = st.selectbox("👑 Season Winner", options=[""] + baker_options)
+                    final_finalists = st.multiselect("🥈🥉 The Other Two Finalists", options=baker_options, max_selections=2)
+                    
+                    submitted = st.form_submit_button("CALCULATE & SAVE FINAL SCORES")
+
+                    if submitted:
+                        if final_winner and len(final_finalists) == 2:
+                            if final_winner not in final_finalists:
+                                # Run the scoring logic
+                                foresight_scores = run_final_scoring(data, final_winner, final_finalists)
+                                
+                                # Save the scores to the dedicated file
+                                save_data('final_scores', foresight_scores)
+                                
+                                st.session_state.data['final_scores'] = foresight_scores
+                                
+                                st.success("Foresight Points calculated and saved successfully! The main leaderboard is now updated with the final results.")
+                                st.balloons()
+
+                                # Display the results for confirmation
+                                st.write("### Calculated Foresight Points:")
+                                results_df = pd.DataFrame.from_dict(foresight_scores, orient='index', columns=['Foresight Points'])
+                                results_df.index.name = 'User ID'
+                                # Add player names for clarity
+                                player_names = {uid: uinfo.get('name', 'Unknown') for uid, uinfo in data.get('users', {}).items()}
+                                results_df['Player'] = results_df.index.map(player_names)
+                                st.dataframe(results_df[['Player', 'Foresight Points']].sort_values('Foresight Points', ascending=False), use_container_width=True)
+
+                            else:
+                                st.error("The winner cannot also be selected as a finalist.")
+                        else:
+                            st.error("Please select one winner and two finalists.")
 
     elif admin_password:
         st.error("❌ Incorrect admin password")
