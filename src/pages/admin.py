@@ -10,7 +10,6 @@ from src.config import WEEK_DATES
 
 def show_page(data_manager: DataManager):
     st.title("⚙️ Commissioner Admin Panel")
-    data = data_manager.get_data()
 
     try:
         admin_secret = st.secrets["admin_panel"]["admin_password"]
@@ -171,3 +170,4 @@ def _show_final_scoring_tab(dm: DataManager):
                     st.error("The winner cannot also be selected as a finalist.")
             else:
                 st.error("Please select one winner and two finalists.")
+
