@@ -292,45 +292,45 @@ elif page == "📝 Submit Picks":
             - Second, you'll make a prediction about the end of the season.
             You can stick with the same picks from week to week or switch as needed. You can also resubmit your picks any time before the deadline.
             """)
-            with st.form(f"picks_week_{selected_week_key}_{user_id}"):
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.subheader("2. Make Your Weekly Predictions")
-                    star_baker = st.selectbox("⭐ Who will be Star Baker:", available_bakers, index=available_bakers.index(existing_picks.get('star_baker', available_bakers[0])) if existing_picks.get('star_baker') in available_bakers else 0)
-                    technical_winner = st.selectbox("🏆 Who will win the Technical:", available_bakers, index=available_bakers.index(existing_picks.get('technical_winner', available_bakers[0])) if existing_picks.get('technical_winner') in available_bakers else 0)
-                    eliminated_baker = st.selectbox("😢 Who will be sent home:", available_bakers, index=available_bakers.index(existing_picks.get('eliminated_baker', available_bakers[0])) if existing_picks.get('eliminated_baker') in available_bakers else 0)
-                    handshake_prediction = st.checkbox("🤝 Will there be a Hollywood Handshake?", value=existing_picks.get('handshake_prediction', False))
-                    
-                with col2:
-                    st.subheader("3. Make your End of Season Predictions")
-                    season_winner = st.selectbox("👑 Season Winner:", available_bakers, index=available_bakers.index(existing_picks.get('season_winner', available_bakers[0])) if existing_picks.get('season_winner') in available_bakers else 0)
-                    finalist_1 = st.selectbox("🥈 Finalist A:", available_bakers, index=available_bakers.index(existing_picks.get('finalist_1', available_bakers[1])) if existing_picks.get('finalist_1') in available_bakers else 1)
-                    finalist_2 = st.selectbox("🥈 Finalist B:", available_bakers, index=available_bakers.index(existing_picks.get('finalist_2', available_bakers[2])) if existing_picks.get('finalist_2') in available_bakers else 2)
-
-                st.markdown("---") # Visual separator
-                weekly_winners = {star_baker, technical_winner}
-                final_three = {season_winner, finalist_1, finalist_2}
-
-                if eliminated_baker in weekly_winners:
-                    st.warning(f"**Conflict:** You have selected **{eliminated_baker}** to be eliminated and also to be a weekly winner. Please review your picks.")
+            # with st.form(f"picks_week_{selected_week_key}_{user_id}"):
+            col1, col2 = st.columns(2)
+            with col1:
+                st.subheader("2. Make Your Weekly Predictions")
+                star_baker = st.selectbox("⭐ Who will be Star Baker:", available_bakers, index=available_bakers.index(existing_picks.get('star_baker', available_bakers[0])) if existing_picks.get('star_baker') in available_bakers else 0)
+                technical_winner = st.selectbox("🏆 Who will win the Technical:", available_bakers, index=available_bakers.index(existing_picks.get('technical_winner', available_bakers[0])) if existing_picks.get('technical_winner') in available_bakers else 0)
+                eliminated_baker = st.selectbox("😢 Who will be sent home:", available_bakers, index=available_bakers.index(existing_picks.get('eliminated_baker', available_bakers[0])) if existing_picks.get('eliminated_baker') in available_bakers else 0)
+                handshake_prediction = st.checkbox("🤝 Will there be a Hollywood Handshake?", value=existing_picks.get('handshake_prediction', False))
                 
-                if eliminated_baker in final_three:
-                    st.warning(f"**Conflict:** You have selected **{eliminated_baker}** to be eliminated and also to be a season finalist/winner. Please review your picks.")
+            with col2:
+                st.subheader("3. Make your End of Season Predictions")
+                season_winner = st.selectbox("👑 Season Winner:", available_bakers, index=available_bakers.index(existing_picks.get('season_winner', available_bakers[0])) if existing_picks.get('season_winner') in available_bakers else 0)
+                finalist_1 = st.selectbox("🥈 Finalist A:", available_bakers, index=available_bakers.index(existing_picks.get('finalist_1', available_bakers[1])) if existing_picks.get('finalist_1') in available_bakers else 1)
+                finalist_2 = st.selectbox("🥈 Finalist B:", available_bakers, index=available_bakers.index(existing_picks.get('finalist_2', available_bakers[2])) if existing_picks.get('finalist_2') in available_bakers else 2)
 
-                if len(final_three) < 3:
-                    st.warning(f"**Conflict:** Your Season Winner and Finalists must be three different people. Please review your picks.")
+            st.markdown("---") # Visual separator
+            weekly_winners = {star_baker, technical_winner}
+            final_three = {season_winner, finalist_1, finalist_2}
+
+            if eliminated_baker in weekly_winners:
+                st.warning(f"**Conflict:** You have selected **{eliminated_baker}** to be eliminated and also to be a weekly winner. Please review your picks.")
+            
+            if eliminated_baker in final_three:
+                st.warning(f"**Conflict:** You have selected **{eliminated_baker}** to be eliminated and also to be a season finalist/winner. Please review your picks.")
+
+            if len(final_three) < 3:
+                st.warning(f"**Conflict:** Your Season Winner and Finalists must be three different people. Please review your picks.")
+            
+            if st.form_submit_button("Submit & Lock In Picks"):
+                picks_data = {'star_baker': star_baker, 'technical_winner': technical_winner, 'eliminated_baker': eliminated_baker, 'handshake_prediction': handshake_prediction, 'season_winner': season_winner, 'finalist_1': finalist_1, 'finalist_2': finalist_2, 'submitted_at': datetime.now().isoformat()}
+                data['picks'][user_id][selected_week_key] = picks_data
+                save_data('picks', data['picks'])
                 
-                if st.form_submit_button("Submit & Lock In Picks"):
-                    picks_data = {'star_baker': star_baker, 'technical_winner': technical_winner, 'eliminated_baker': eliminated_baker, 'handshake_prediction': handshake_prediction, 'season_winner': season_winner, 'finalist_1': finalist_1, 'finalist_2': finalist_2, 'submitted_at': datetime.now().isoformat()}
-                    data['picks'][user_id][selected_week_key] = picks_data
-                    save_data('picks', data['picks'])
-                    
-                    display_week_name = WEEK_DATES.get(selected_week_key, f"Week {selected_week_key}")
-                    st.success(f"✅ Your picks for {display_week_name} have been submitted!")
-                    rain(emoji="🍰", font_size=54, falling_speed=3, animation_length="5s")
+                display_week_name = WEEK_DATES.get(selected_week_key, f"Week {selected_week_key}")
+                st.success(f"✅ Your picks for {display_week_name} have been submitted!")
+                rain(emoji="🍰", font_size=54, falling_speed=3, animation_length="5s")
 
-                    if user_email:
-                        send_confirmation_email(recipient_email=user_email, user_name=user_name, week_display=display_week_name, picks=picks_data)
+                if user_email:
+                    send_confirmation_email(recipient_email=user_email, user_name=user_name, week_display=display_week_name, picks=picks_data)
 
 # --- INFO PAGE ---
 elif page == "📖 Info Page":
