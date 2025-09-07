@@ -32,6 +32,7 @@ def is_email_allowed(user_email: str) -> bool:
             )
             return False
     except (KeyError, FileNotFoundError):
+        st.warning("Allowed email list not found")
         # If the secret is not defined, allow everyone to register as a fallback.
         # This maintains original functionality if the feature isn't configured.
         return True
