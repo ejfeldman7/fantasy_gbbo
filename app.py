@@ -293,7 +293,37 @@ elif page == "⚙️ Admin Panel":
                 st.info("No players have registered yet.")
         with tab4:
             st.subheader("Data Management")
-            # ... unchanged ...
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.write("**Export Data**")
+                if st.button("Download All Data"):
+                    # Create downloadable JSON
+                    all_data = {
+                        'users': data['users'],
+                        'bakers': data['bakers'],
+                        'picks': data['picks'],
+                        'results': data['results'],
+                        'exported_at': datetime.now().isoformat()
+                    }
+                    st.download_button(
+                        "📥 Download JSON",
+                        data=json.dumps(all_data, indent=2),
+                        file_name=f"bakeoff_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                        mime="application/json"
+                    )
+            
+            with col2:
+                st.write("**Reset Data**")
+                if st.button("⚠️ Reset All Data", type="secondary"):
+                    if st.button("Confirm Reset", type="primary"):
+                        for data_type in ['users', 'bakers', 'picks', 'results']:
+                            if os.path.exists(f"{data_type}.json"):
+                                os.remove(f"{data_type}.json")
+                        st.session_state.data = load_data()
+                        st.success("All data reset!")
+                        st.rerun()
             
     elif admin_password:
         st.error("❌ Incorrect admin password")
