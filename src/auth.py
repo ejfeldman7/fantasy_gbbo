@@ -1,5 +1,4 @@
 import streamlit as st
-from typing import List
 
 def _normalize_email(email: str) -> str:
     """
