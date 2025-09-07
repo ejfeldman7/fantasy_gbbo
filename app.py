@@ -3,7 +3,7 @@ from streamlit_extras.let_it_rain import rain
 import pandas as pd
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, List
 from email.message import EmailMessage
 from email.utils import formataddr
@@ -30,10 +30,27 @@ WEEK_DATES = {
     "10": "Week 10 (11/7)",
 }
 
+# Defines when picks for a week become public. Set to Friday 00:00 PT.
+# This accounts for the PDT -> PST change in November.
+REVEAL_DATES_UTC = {
+    # All are Fridays. 00:00 PT = 07:00 UTC (PDT)
+    "2": datetime(2025, 9, 12, 7, 0, 0, tzinfo=timezone.utc),
+    "3": datetime(2025, 9, 19, 7, 0, 0, tzinfo=timezone.utc),
+    "4": datetime(2025, 9, 26, 7, 0, 0, tzinfo=timezone.utc),
+    "5": datetime(2025, 10, 3, 7, 0, 0, tzinfo=timezone.utc),
+    "6": datetime(2025, 10, 10, 7, 0, 0, tzinfo=timezone.utc),
+    "7": datetime(2025, 10, 17, 7, 0, 0, tzinfo=timezone.utc),
+    "8": datetime(2025, 10, 24, 7, 0, 0, tzinfo=timezone.utc),
+    "9": datetime(2025, 10, 31, 7, 0, 0, tzinfo=timezone.utc),
+    # DST ends Sunday Nov 2. So the next deadline is PST (UTC-8)
+    # 00:00 PT = 08:00 UTC (PST)
+    "10": datetime(2025, 11, 7, 8, 0, 0, tzinfo=timezone.utc),
+}
+
 # --- DATA PERSISTENCE FUNCTIONS ---
 def load_data():
     """Load all data from JSON files"""
-    data = {'users': {}, 'bakers': [], 'picks': {}, 'results': {}}
+    data = {'users': {}, 'bakers': [], 'picks': {}, 'results': {}, 'final_scores': {}}
     for key in data.keys():
         filename = f"{key}.json"
         if os.path.exists(filename):
@@ -139,17 +156,27 @@ def run_final_scoring(data: Dict, final_winner: str, final_finalists: List[str])
 
 
 def calculate_user_scores(data):
+    """Calculates total scores, including weekly and final foresight points."""
     scores = {}
+    final_scores = data.get('final_scores', {})
+
     for user_id, user_picks in data.get('picks', {}).items():
         weekly_points = 0
-        foresight_points = 0
         for week, picks in user_picks.items():
             results = data.get('results', {}).get(week)
             if results:
                 if picks.get('star_baker') == results.get('star_baker'): weekly_points += 5
                 if picks.get('technical_winner') == results.get('technical_winner'): weekly_points += 3
                 if picks.get('handshake_prediction') and results.get('handshake_given'): weekly_points += 10
-        scores[user_id] = {'weekly_points': weekly_points, 'foresight_points': foresight_points, 'total_points': weekly_points + foresight_points}
+        
+        # Get pre-calculated foresight points
+        foresight_points = final_scores.get(user_id, 0)
+        
+        scores[user_id] = {
+            'weekly_points': weekly_points, 
+            'foresight_points': foresight_points, 
+            'total_points': weekly_points + foresight_points
+        }
     return scores
 
 # --- SIDEBAR NAVIGATION ---
@@ -181,26 +208,37 @@ if page == "🏆 Leaderboard & Stats":
 
         with st.expander("📋 View All Picks History"):
             if data.get('picks'):
+                now_utc = datetime.now(timezone.utc)
                 all_weeks = sorted(set(w for picks in data['picks'].values() for w in picks.keys()), key=int)
+                
+                revealed_weeks_count = 0
                 for week_key in all_weeks:
-                    display_name = WEEK_DATES.get(week_key, f"Week {week_key}")
-                    with st.expander(f"{display_name} Predictions"):
-                        week_picks_data = []
-                        for user_id, user_picks in data['picks'].items():
-                            if week_key in user_picks:
-                                picks = user_picks[week_key]
-                                user_record = data.get('users', {}).get(user_id, {})
-                                player_name = user_record.get('name', f'Deleted User ({user_id})')
-                                week_picks_data.append({
-                                    'Player': player_name,
-                                    'Star Baker': picks.get('star_baker', ''),
-                                    'Technical': picks.get('technical_winner', ''),
-                                    'Handshake': '✓' if picks.get('handshake_prediction') else '✗',
-                                    'Season Winner': picks.get('season_winner', ''),
-                                    'Submitted': picks.get('submitted_at', '')[:16] if picks.get('submitted_at') else ''
-                                })
-                        if week_picks_data:
-                            st.dataframe(pd.DataFrame(week_picks_data), use_container_width=True, hide_index=True)
+                    reveal_date = REVEAL_DATES_UTC.get(week_key)
+
+                    # Only show the expander if the reveal date has passed
+                    if reveal_date and now_utc > reveal_date:
+                        revealed_weeks_count += 1
+                        display_name = WEEK_DATES.get(week_key, f"Week {week_key}")
+                        with st.expander(f"{display_name} Predictions"):
+                            week_picks_data = []
+                            for user_id, user_picks in data['picks'].items():
+                                if week_key in user_picks:
+                                    picks = user_picks[week_key]
+                                    user_record = data.get('users', {}).get(user_id, {})
+                                    player_name = user_record.get('name', f'Deleted User ({user_id})')
+                                    week_picks_data.append({
+                                        'Player': player_name,
+                                        'Star Baker': picks.get('star_baker', ''),
+                                        'Technical': picks.get('technical_winner', ''),
+                                        'Handshake': '✓' if picks.get('handshake_prediction') else '✗',
+                                        'Season Winner': picks.get('season_winner', ''),
+                                        'Submitted': picks.get('submitted_at', '')[:16] if picks.get('submitted_at') else ''
+                                    })
+                            if week_picks_data:
+                                st.dataframe(pd.DataFrame(week_picks_data), use_container_width=True, hide_index=True)
+                
+                if revealed_weeks_count == 0:
+                    st.caption("Picks for past weeks will be revealed here after the submission deadline has passed.")
 
 # --- SUBMIT PICKS PAGE ---
 elif page == "📝 Submit Picks":
@@ -234,52 +272,60 @@ elif page == "📝 Submit Picks":
         user_email = data.get('users', {}).get(user_id, {}).get('email', "")
         st.success(f"Welcome, **{user_name}**! You're ready to submit your picks.")
 
-        week_options = list(WEEK_DATES.keys())
-        selected_week_key = st.selectbox("Select Week:", options=week_options, format_func=lambda key: WEEK_DATES.get(key, f"Week {key}"))
+        # --- UPDATED: Filter weeks to only show those with open submissions ---
+        now_utc = datetime.now(timezone.utc)
+        available_weeks_for_picks = [
+            key for key, reveal_date in REVEAL_DATES_UTC.items() if now_utc < reveal_date
+        ]
 
-        if user_id not in data['picks']: data['picks'][user_id] = {}
-        existing_picks = data['picks'][user_id].get(selected_week_key, {})
-        available_bakers = data.get('bakers') or [f"Baker {chr(65+i)}" for i in range(12)]
+        if not available_weeks_for_picks:
+            st.warning("All submission deadlines have passed for this season. No more picks can be made.")
+        else:
+            selected_week_key = st.selectbox("Select Week:", options=available_weeks_for_picks, format_func=lambda key: WEEK_DATES.get(key, f"Week {key}"))
 
-        st.markdown("""
-        Each week you are making two different sets of predictions. 
-        - First, you'll select Star Baker and Technical Winner for next week, with a bonus guess on if a handshake will be awarded.
-        - Second, you'll make a prediction about the end of the season. Who will win? Who will the other two finalists be?
-        You can stick with the same picks from week to week, if those bakers are still active, or you can switch as needed.
+            if user_id not in data['picks']: data['picks'][user_id] = {}
+            existing_picks = data['picks'][user_id].get(selected_week_key, {})
+            available_bakers = data.get('bakers') or [f"Baker {chr(65+i)}" for i in range(12)]
 
-        Additionally, if you submit your choices, feel free to come back to this page and submit again. 
-        
-        You should receive an email confirming your submission shortly after hitting submit.
-        """)
-        with st.form(f"picks_week_{selected_week_key}_{user_id}"):
-            col1, col2 = st.columns(2)
-            with col1:
-                st.subheader("2. Make Your Weekly Predictions")
-                star_baker = st.selectbox("⭐ Who will be Star Baker:", available_bakers, index=available_bakers.index(existing_picks.get('star_baker', available_bakers[0])) if existing_picks.get('star_baker') in available_bakers else 0)
-                technical_winner = st.selectbox("🏆 Who will win the Technical:", available_bakers, index=available_bakers.index(existing_picks.get('technical_winner', available_bakers[0])) if existing_picks.get('technical_winner') in available_bakers else 0)
-                handshake_prediction = st.checkbox("🤝 Will there be a Hollywood Handshake?", value=existing_picks.get('handshake_prediction', False))
-            with col2:
-                st.subheader("3. Make your End of Season Predictions")
-                season_winner = st.selectbox("👑 Season Winner:", available_bakers, index=available_bakers.index(existing_picks.get('season_winner', available_bakers[0])) if existing_picks.get('season_winner') in available_bakers else 0)
-                finalist_1 = st.selectbox("🥈 Finalist A:", available_bakers, index=available_bakers.index(existing_picks.get('finalist_1', available_bakers[1])) if existing_picks.get('finalist_1') in available_bakers else 1)
-                finalist_2 = st.selectbox("🥈 Finalist B:", available_bakers, index=available_bakers.index(existing_picks.get('finalist_2', available_bakers[2])) if existing_picks.get('finalist_2') in available_bakers else 2)
+            st.markdown("""
+            Each week you are making two different sets of predictions. 
+            - First, you'll select Star Baker and Technical Winner for next week, with a bonus guess on if a handshake will be awarded.
+            - Second, you'll make a prediction about the end of the season. Who will win? Who will the other two finalists be?
+            You can stick with the same picks from week to week, if those bakers are still active, or you can switch as needed.
+
+            Additionally, if you submit your choices, feel free to come back to this page and submit again. 
             
-            if st.form_submit_button("Submit & Lock In Picks"):
-                picks_data = {'star_baker': star_baker, 'technical_winner': technical_winner, 'handshake_prediction': handshake_prediction, 'season_winner': season_winner, 'finalist_1': finalist_1, 'finalist_2': finalist_2, 'submitted_at': datetime.now().isoformat()}
-                data['picks'][user_id][selected_week_key] = picks_data
-                save_data('picks', data['picks'])
+            You should receive an email confirming your submission shortly after hitting submit.
+            """)
+            with st.form(f"picks_week_{selected_week_key}_{user_id}"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.subheader("2. Make Your Weekly Predictions")
+                    star_baker = st.selectbox("⭐ Who will be Star Baker:", available_bakers, index=available_bakers.index(existing_picks.get('star_baker', available_bakers[0])) if existing_picks.get('star_baker') in available_bakers else 0)
+                    technical_winner = st.selectbox("🏆 Who will win the Technical:", available_bakers, index=available_bakers.index(existing_picks.get('technical_winner', available_bakers[0])) if existing_picks.get('technical_winner') in available_bakers else 0)
+                    handshake_prediction = st.checkbox("🤝 Will there be a Hollywood Handshake?", value=existing_picks.get('handshake_prediction', False))
+                with col2:
+                    st.subheader("3. Make your End of Season Predictions")
+                    season_winner = st.selectbox("👑 Season Winner:", available_bakers, index=available_bakers.index(existing_picks.get('season_winner', available_bakers[0])) if existing_picks.get('season_winner') in available_bakers else 0)
+                    finalist_1 = st.selectbox("🥈 Finalist A:", available_bakers, index=available_bakers.index(existing_picks.get('finalist_1', available_bakers[1])) if existing_picks.get('finalist_1') in available_bakers else 1)
+                    finalist_2 = st.selectbox("🥈 Finalist B:", available_bakers, index=available_bakers.index(existing_picks.get('finalist_2', available_bakers[2])) if existing_picks.get('finalist_2') in available_bakers else 2)
                 
-                display_week_name = WEEK_DATES.get(selected_week_key, f"Week {selected_week_key}")
-                st.success(f"✅ Your picks for {display_week_name} have been submitted!")
-                rain(
-                    emoji="🍰",
-                    font_size=54,
-                    falling_speed=3,
-                    animation_length="5s",
-                )
+                if st.form_submit_button("Submit & Lock In Picks"):
+                    picks_data = {'star_baker': star_baker, 'technical_winner': technical_winner, 'handshake_prediction': handshake_prediction, 'season_winner': season_winner, 'finalist_1': finalist_1, 'finalist_2': finalist_2, 'submitted_at': datetime.now().isoformat()}
+                    data['picks'][user_id][selected_week_key] = picks_data
+                    save_data('picks', data['picks'])
+                    
+                    display_week_name = WEEK_DATES.get(selected_week_key, f"Week {selected_week_key}")
+                    st.success(f"✅ Your picks for {display_week_name} have been submitted!")
+                    rain(
+                        emoji="🍰",
+                        font_size=54,
+                        falling_speed=3,
+                        animation_length="5s",
+                    )
 
-                if user_email:
-                    send_confirmation_email(recipient_email=user_email, user_name=user_name, week_display=display_week_name, picks=picks_data)
+                    if user_email:
+                        send_confirmation_email(recipient_email=user_email, user_name=user_name, week_display=display_week_name, picks=picks_data)
 
 # --- INFO PAGE ---
 elif page == "📖 Info Page":
@@ -437,19 +483,22 @@ elif page == "⚙️ Admin Panel":
         with tab4:
             st.subheader("Data Management")
             if st.button("Download All Data as JSON"):
-                all_data_str = json.dumps(st.session_state.data, indent=2)
+                # Ensure final_scores is included in the download
+                full_data = st.session_state.data
+                full_data['final_scores'] = load_data().get('final_scores', {})
+                all_data_str = json.dumps(full_data, indent=2)
                 st.download_button(label="📥 Click to Download", data=all_data_str, file_name=f"bakeoff_backup_{datetime.now().strftime('%Y%m%d')}.json", mime="application/json")
 
             with st.expander("⚠️ Reset All Data (Permanent)"):
                 st.warning("This will delete all users, picks, and results. This cannot be undone.")
                 if st.button("RESET ALL LEAGUE DATA", type="primary"):
-                    for key in ['users', 'bakers', 'picks', 'results']:
+                    for key in ['users', 'bakers', 'picks', 'results', 'final_scores']:
                         if os.path.exists(f"{key}.json"):
                             os.remove(f"{key}.json")
                     st.session_state.data = load_data()
                     st.success("All league data has been reset.")
                     st.rerun()
-
+        
         with tab5:
             st.subheader("🏆 Final Season Scoring")
             st.info("Use this tool **only after the season finale** to calculate final Foresight Points and determine the league winner.")
@@ -499,3 +548,4 @@ elif page == "⚙️ Admin Panel":
 # --- FOOTER ---
 st.sidebar.markdown("---")
 st.sidebar.markdown("🧁 *May the best Star Predictor win!*")
+
