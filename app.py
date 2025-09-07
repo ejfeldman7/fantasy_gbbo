@@ -453,8 +453,8 @@ elif page == "📖 Info Page":
 elif page == "⚙️ Admin Panel":
     st.title("⚙️ Commissioner Admin Panel")
     admin_password = st.text_input("Enter admin password:", type="password", key="admin_pw")
-    
-    if admin_password == "bakeoff2024":
+    admin_secret = st.secrets["admin_panel"]["admin_password"]
+    if admin_password == admin_secret:
         data = st.session_state.data
         tab1, tab2, tab3, tab4, tab5 = st.tabs(["Episode Results", "Manage Bakers", "Manage Players", "Data Management", "🏆 Final Scoring"])
 
