@@ -126,7 +126,7 @@ def calculate_user_scores(data):
 
 # --- SIDEBAR NAVIGATION ---
 st.sidebar.title("🧁 Fantasy Bake Off")
-page = st.sidebar.selectbox("Navigate to:", ["🏆 Leaderboard & Stats", "📝 Submit Picks", "Info Page", "⚙️ Admin Panel"])
+page = st.sidebar.selectbox("Navigate to:", ["🏆 Leaderboard & Stats", "📝 Submit Picks", "📖 Info Page", "⚙️ Admin Panel"])
 
 # --- LEADERBOARD & STATS PAGE ---
 if page == "🏆 Leaderboard & Stats":
@@ -249,8 +249,8 @@ elif page == "📝 Submit Picks":
                     send_confirmation_email(recipient_email=user_email, user_name=user_name, week_display=display_week_name, picks=picks_data)
 
 # --- INFO PAGE ---
-elif page == "Info Page":
-    st.title("Info Page")
+elif page == "📖 Info Page":
+    st.title("📖 Info Page")
     st.header("Welcome to the Great Fantasy Bake Off League!")
     st.markdown("""
     On your marks, get set, predict! This season, we’re adding a new layer of fun to our weekly viewing with a fantasy league. 
