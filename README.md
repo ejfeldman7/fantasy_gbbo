@@ -8,6 +8,7 @@ This is a self-hosted web application built with Streamlit for running a fantasy
 ## Features
 ### For Players
 - Profile Creation: Join the league by creating a simple profile with your name and email.
+- Email Allow-List: (Optional) Restrict registration to a pre-approved list of emails for private leagues.
 - Weekly Picks: Each week, submit predictions for:
   - ⭐ Star Baker
   - 🏆 Technical Challenge Winner
@@ -55,19 +56,27 @@ In the root of your project folder, create a new folder named .streamlit.
 Inside the .streamlit folder, create a new file named secrets.toml.
 Your project structure should look like this:
 ```
-fantasy-bake-off/
-├── .streamlit/
-│   └── secrets.toml
-├── app.py
-├── requirements.txt
-└── (JSON data files will appear here once the app runs)
-```
-Copy the following into your secrets.toml file and replace the values with your own:
-```
+# .streamlit/secrets.toml
+
+# Credentials for sending confirmation emails (e.g., Gmail)
+# NOTE: You must use a Google "App Password", not your regular password.
 [email_credentials]
 sender_name = "Fantasy Bake Off Commissioner"
 sender_email = "your_email@gmail.com"
-sender_password = "your_gmail_app_password"
+sender_password = "your_16_character_app_password"
+
+# Password to access the Admin Panel in the app
+[admin_panel]
+admin_password = "a_secure_password_of_your_choice"
+
+# (Optional) Email Allow-List for registration
+# If this section is omitted, anyone can register.
+[allowed_emails]
+emails = [
+    "player.one@example.com",
+    "player.two@example.com",
+    "another-player@domain.org"
+]
 ```
 
 ### 5. Generate a Gmail "App Password"
@@ -99,3 +108,26 @@ The application should now be running in your web browser!
 - Add each of the new season's contestants to the list.
 
 The league is now ready for a new season!
+
+## 📁 Project Structure
+```
+.
+├── .github/workflows/        # GitHub Actions for CI/CD
+│   └── static_analysis.yml
+├── .streamlit/
+│   └── secrets.toml          # Secure credentials (not committed)
+├── src/
+│   ├── pages/                # Each page of the Streamlit app
+│   │   ├── admin.py
+│   │   ├── info.py
+│   │   ├── leaderboard.py
+│   │   └── submit_picks.py
+│   ├── auth.py               # Email validation logic
+│   ├── config.py             # Season-specific dates and constants
+│   ├── data_manager.py       # OOP class for handling data files
+│   ├── email_utils.py        # Email sending functions
+│   └── scoring.py            # Scoring calculation logic
+├── app.py                    # Main entry point for the app
+├── requirements.txt          # Project dependencies
+└── README.md                 # This file
+```
