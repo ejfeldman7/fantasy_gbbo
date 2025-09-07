@@ -86,8 +86,8 @@ def send_confirmation_email(recipient_email: str, user_name: str, week_display: 
             <h3>Your Season Predictions:</h3>
             <ul>
                 <li><strong>👑 Season Winner:</strong> {picks.get('season_winner', 'N/A')}</li>
-                <li><strong>🥈 Finalist #1:</strong> {picks.get('finalist_1', 'N/A')}</li>
-                <li><strong>🥉 Finalist #2:</strong> {picks.get('finalist_2', 'N/A')}</li>
+                <li><strong>🥈 Finalist A:</strong> {picks.get('finalist_1', 'N/A')}</li>
+                <li><strong>🥈 Finalist B:</strong> {picks.get('finalist_2', 'N/A')}</li>
             </ul>
             <p>Good luck! May your predictions rise to the occasion. 🎂</p>
         </div>
@@ -120,16 +120,16 @@ def run_final_scoring(data: Dict, final_winner: str, final_finalists: List[str])
                 week_num = int(week_str)
                 # Award points for correct winner prediction
                 if picks.get('season_winner') == final_winner:
-                    points = (11 - week_num) * 20
+                    points = (11 - week_num) * 10
                     foresight_scores[user_id] += points
                 
                 # Award points for correct finalist predictions
                 if picks.get('finalist_1') in final_finalists:
-                    points = (11 - week_num) * 10
+                    points = (11 - week_num) * 5
                     foresight_scores[user_id] += points
                 
                 if picks.get('finalist_2') in final_finalists:
-                    points = (11 - week_num) * 10
+                    points = (11 - week_num) * 5
                     foresight_scores[user_id] += points
             except (ValueError, TypeError):
                 continue # Skip if week is not a valid number
@@ -260,8 +260,8 @@ elif page == "📝 Submit Picks":
             with col2:
                 st.subheader("3. Make your End of Season Predictions")
                 season_winner = st.selectbox("👑 Season Winner:", available_bakers, index=available_bakers.index(existing_picks.get('season_winner', available_bakers[0])) if existing_picks.get('season_winner') in available_bakers else 0)
-                finalist_1 = st.selectbox("🥈 Finalist #1:", available_bakers, index=available_bakers.index(existing_picks.get('finalist_1', available_bakers[1])) if existing_picks.get('finalist_1') in available_bakers else 1)
-                finalist_2 = st.selectbox("🥉 Finalist #2:", available_bakers, index=available_bakers.index(existing_picks.get('finalist_2', available_bakers[2])) if existing_picks.get('finalist_2') in available_bakers else 2)
+                finalist_1 = st.selectbox("🥈 Finalist A:", available_bakers, index=available_bakers.index(existing_picks.get('finalist_1', available_bakers[1])) if existing_picks.get('finalist_1') in available_bakers else 1)
+                finalist_2 = st.selectbox("🥈 Finalist B:", available_bakers, index=available_bakers.index(existing_picks.get('finalist_2', available_bakers[2])) if existing_picks.get('finalist_2') in available_bakers else 2)
             
             if st.form_submit_button("Submit & Lock In Picks"):
                 picks_data = {'star_baker': star_baker, 'technical_winner': technical_winner, 'handshake_prediction': handshake_prediction, 'season_winner': season_winner, 'finalist_1': finalist_1, 'finalist_2': finalist_2, 'submitted_at': datetime.now().isoformat()}
@@ -319,9 +319,11 @@ elif page == "📖 Info Page":
     This is where strategy comes in. You get points for correctly predicting the season's winner and finalists, 
     but correct predictions made **earlier in the season are worth exponentially more**.
 
-    Your season outcome predictions are logged each week. At the end of the season, we'll go back and award points for every single time you correctly predicted the outcome.
-    - **The Formula**: A correct pick is multiplied by a factor that decreases each week. A correct **winner** prediction is worth **20 base points**, and a correct **finalist** is worth **10**.
-    - **Example**: Correctly predicting the season winner in Week 2 is worth **180 points** `((11-2) x 20)`. Waiting until the semi-final in Week 9 to make that same correct prediction is only worth **40 points** `((11-9) x 20)`.
+    Your season outcome predictions are logged each week but scores will only be known when the winner is crowned. 
+    At the end of the season, we'll go back and award points for every single time you correctly predicted the outcome.
+    - **The Formula**: A correct pick is multiplied by a factor that decreases each week. A correct **winner** prediction is worth **10 base points**, and a correct **finalist** is worth **5**.
+    - **Example**: Correctly predicting the season winner in Week 2 is worth **90 points** `((11-2) x 10)`. Waiting until the semi-final in Week 9 to make that same correct prediction is only worth **20 points** `((11-9) x 10)`.
+    This is cumulative, so correct predictions in, for example, Weeks 3, 6, 8, and 10 would all be included in your total. 
 
     This system rewards those who can spot the champion from the very beginning!
     """)
@@ -329,8 +331,9 @@ elif page == "📖 Info Page":
 
     st.subheader("Rules of the Tent")
     st.markdown("""
-    - **Submission Deadline**: All weekly predictions must be submitted to the commissioner at least one hour before the episode's UK airtime.
-    - **Baker Withdrawals**: If a baker leaves the competition for personal or medical reasons, it does not count as a standard elimination. Any predictions involving that baker for that week are considered void, and no points are awarded or lost.
+    **Submission Deadline**:
+    All weekly predictions must be submitted in this app before the episode for that week is available. 
+    So, after watching Week 1, submit for Week 2 by midnight on Thursday.
     """)
     st.info("That's it! Keep your eyes on the bakes, trust your instincts, and get ready for a fantastic season. Good luck!")
 
