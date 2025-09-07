@@ -126,7 +126,7 @@ def calculate_user_scores(data):
 
 # --- SIDEBAR NAVIGATION ---
 st.sidebar.title("🧁 Fantasy Bake Off")
-page = st.sidebar.selectbox("Navigate to:", ["🏆 Leaderboard & Stats", "📝 Submit Picks", "⚙️ Admin Panel"])
+page = st.sidebar.selectbox("Navigate to:", ["🏆 Leaderboard & Stats", "📝 Submit Picks", "Info Page", "⚙️ Admin Panel"])
 
 # --- LEADERBOARD & STATS PAGE ---
 if page == "🏆 Leaderboard & Stats":
@@ -206,7 +206,6 @@ elif page == "📝 Submit Picks":
         user_email = data.get('users', {}).get(user_id, {}).get('email', "")
         st.success(f"Welcome, **{user_name}**! You're ready to submit your picks.")
 
-        st.subheader("2. Make Your Predictions")
         week_options = list(WEEK_DATES.keys())
         selected_week_key = st.selectbox("Select Week:", options=week_options, format_func=lambda key: WEEK_DATES.get(key, f"Week {key}"))
 
@@ -214,19 +213,29 @@ elif page == "📝 Submit Picks":
         existing_picks = data['picks'][user_id].get(selected_week_key, {})
         available_bakers = data.get('bakers') or [f"Baker {chr(65+i)}" for i in range(12)]
 
+        st.markdown("""
+        Each week you are making two different sets of predictions. 
+        - First, you'll select Star Baker and Technical Winner for next week, with a bonus guess on if a handshake will be awarded.
+        - Second, you'll make a prediction about the end of the season. Who will win? Who will the other two finalists be?
+        You can stick with the same picks from week to week, if those bakers are still active, or you can switch as needed.
+
+        Additionally, if you submit your choices, feel free to come back to this page and submit again. 
+        
+        You should receive an email confirming your submission shortly after hitting submit.
+        """)
         with st.form(f"picks_week_{selected_week_key}_{user_id}"):
             col1, col2 = st.columns(2)
             with col1:
-                st.subheader("For next week's episode, make selections below:")
+                st.subheader("2. Make Your Weekly Predictions")
                 star_baker = st.selectbox("⭐ Who will be Star Baker:", available_bakers, index=available_bakers.index(existing_picks.get('star_baker', available_bakers[0])) if existing_picks.get('star_baker') in available_bakers else 0)
                 technical_winner = st.selectbox("🏆 Who will win the Technical:", available_bakers, index=available_bakers.index(existing_picks.get('technical_winner', available_bakers[0])) if existing_picks.get('technical_winner') in available_bakers else 0)
                 handshake_prediction = st.checkbox("🤝 Will there be a Hollywood Handshake?", value=existing_picks.get('handshake_prediction', False))
             with col2:
-                st.subheader("Considering the final and full season winner, make selections below:")
+                st.subheader("3. Make your End of Season Predictions")
                 season_winner = st.selectbox("👑 Season Winner:", available_bakers, index=available_bakers.index(existing_picks.get('season_winner', available_bakers[0])) if existing_picks.get('season_winner') in available_bakers else 0)
                 finalist_1 = st.selectbox("🥈 Finalist #1:", available_bakers, index=available_bakers.index(existing_picks.get('finalist_1', available_bakers[1])) if existing_picks.get('finalist_1') in available_bakers else 1)
                 finalist_2 = st.selectbox("🥉 Finalist #2:", available_bakers, index=available_bakers.index(existing_picks.get('finalist_2', available_bakers[2])) if existing_picks.get('finalist_2') in available_bakers else 2)
-
+            
             if st.form_submit_button("Submit & Lock In Picks"):
                 picks_data = {'star_baker': star_baker, 'technical_winner': technical_winner, 'handshake_prediction': handshake_prediction, 'season_winner': season_winner, 'finalist_1': finalist_1, 'finalist_2': finalist_2, 'submitted_at': datetime.now().isoformat()}
                 data['picks'][user_id][selected_week_key] = picks_data
@@ -238,6 +247,65 @@ elif page == "📝 Submit Picks":
 
                 if user_email:
                     send_confirmation_email(recipient_email=user_email, user_name=user_name, week_display=display_week_name, picks=picks_data)
+
+# --- INFO PAGE ---
+elif page == "Info Page":
+    st.title("Info Page")
+    st.header("Welcome to the Great Fantasy Bake Off League!")
+    st.markdown("""
+    On your marks, get set, predict! This season, we’re adding a new layer of fun to our weekly viewing with a fantasy league. 
+    The goal is simple: prove you have the best eye for baking talent by accurately predicting both the weekly events and the season's ultimate champions.
+    
+    The game is all about prediction. Each week you'll make a new set of picks, and your foresight will be rewarded with points. May the best Star Predictor win!
+    """)
+    st.markdown("---")
+
+    st.subheader("How to Play: Your Weekly Signature Bake")
+    st.markdown("""
+    Each week of the competition (starting with Episode 2), you will submit a fresh set of predictions before the episode airs.
+    Your weekly submission must include five predictions:
+    - **Star Baker**: Who will be the week's top baker?
+    - **Technical Challenge Winner**: Who will come in first in the technical?
+    - **Hollywood Handshake**: Will anyone get a handshake? (Optional, high-reward pick).
+    - **Predicted Season Winner**: Who do you think will win the entire competition?
+    - **Predicted Finalists (x2)**: Who will the other two finalists be?
+
+    Your predictions for the season winner and finalists can change week to week as you see how the bakers perform.
+    """)
+    st.markdown("---")
+    
+    st.subheader("Scoring: The Recipe for Victory")
+    st.markdown("Your grand total will be a combination of two types of points: **Weekly Points** and **Foresight Points**.")
+    
+    st.write("#### 1. Weekly Points")
+    st.markdown("These are straightforward points for correctly predicting the episode's key events.")
+    st.markdown("""
+    | Correct Prediction         | Points Awarded |
+    |----------------------------|----------------|
+    | Hollywood Handshake        | 10 points      |
+    | Star Baker                 | 5 points       |
+    | Technical Challenge Winner | 3 points       |
+    """)
+
+    st.write("#### 2. Foresight Points: The Weighted Bonus")
+    st.markdown("""
+    This is where strategy comes in. You get points for correctly predicting the season's winner and finalists, 
+    but correct predictions made **earlier in the season are worth exponentially more**.
+
+    Your season outcome predictions are logged each week. At the end of the season, we'll go back and award points for every single time you correctly predicted the outcome.
+    - **The Formula**: A correct pick is multiplied by a factor that decreases each week. A correct **winner** prediction is worth **20 base points**, and a correct **finalist** is worth **10**.
+    - **Example**: Correctly predicting the season winner in Week 2 is worth **180 points** `((11-2) x 20)`. Waiting until the semi-final in Week 9 to make that same correct prediction is only worth **40 points** `((11-9) x 20)`.
+
+    This system rewards those who can spot the champion from the very beginning!
+    """)
+    st.markdown("---")
+
+    st.subheader("Rules of the Tent")
+    st.markdown("""
+    - **Submission Deadline**: All weekly predictions must be submitted to the commissioner at least one hour before the episode's UK airtime.
+    - **Baker Withdrawals**: If a baker leaves the competition for personal or medical reasons, it does not count as a standard elimination. Any predictions involving that baker for that week are considered void, and no points are awarded or lost.
+    """)
+    st.info("That's it! Keep your eyes on the bakes, trust your instincts, and get ready for a fantastic season. Good luck!")
 
 # --- ADMIN PANEL PAGE ---
 elif page == "⚙️ Admin Panel":
