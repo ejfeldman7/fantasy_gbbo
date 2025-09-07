@@ -166,7 +166,36 @@ if page == "🏆 Leaderboard & Stats":
             df = pd.DataFrame(leaderboard_data).sort_values('Total Points', ascending=False).reset_index(drop=True)
             df.index = df.index + 1
             st.dataframe(df, use_container_width=True)
-    # The rest of the Leaderboard page content is unchanged...
+
+        st.subheader("📊 Current Season Predictions")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.write("**Winner Predictions**")
+            winner_predictions = {}
+            for user_picks in data['picks'].values():
+                for week_picks in user_picks.values():
+                    winner = week_picks.get('season_winner')
+                    if winner:
+                        winner_predictions[winner] = winner_predictions.get(winner, 0) + 1
+            
+            if winner_predictions:
+                winner_df = pd.DataFrame(list(winner_predictions.items()), 
+                                       columns=['Baker', 'Predictions'])
+                winner_df = winner_df.sort_values('Predictions', ascending=False)
+                st.dataframe(winner_df, use_container_width=True)
+        
+        with col2:
+            st.write("**Most Recent Episode Results**")
+            if data['results']:
+                latest_week = max(data['results'].keys())
+                latest_results = data['results'][latest_week]
+                
+                st.write(f"**Week {latest_week}**")
+                st.write(f"⭐ Star Baker: {latest_results.get('star_baker', 'TBD')}")
+                st.write(f"🏆 Technical Winner: {latest_results.get('technical_winner', 'TBD')}")
+                st.write(f"🤝 Handshake Given: {'Yes' if latest_results.get('handshake_given') else 'No'}")
 
 # --- SUBMIT PICKS PAGE ---
 elif page == "📝 Submit Picks":
@@ -276,10 +305,81 @@ elif page == "⚙️ Admin Panel":
         
         with tab1:
             st.subheader("Enter Episode Results")
-            # ... unchanged ...
+            
+            result_week = st.selectbox("Select Week:", list(range(2, 12)))
+            
+            existing_results = data['results'].get(str(result_week), {})
+            
+            with st.form(f"results_week_{result_week}"):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    star_baker_result = st.selectbox(
+                        "⭐ Actual Star Baker:",
+                        options=[""] + data['bakers'],
+                        index=data['bakers'].index(existing_results.get('star_baker')) + 1
+                        if existing_results.get('star_baker') in data['bakers'] else 0
+                    )
+                    
+                    technical_winner_result = st.selectbox(
+                        "🏆 Technical Challenge Winner:",
+                        options=[""] + data['bakers'],
+                        index=data['bakers'].index(existing_results.get('technical_winner')) + 1
+                        if existing_results.get('technical_winner') in data['bakers'] else 0
+                    )
+                
+                with col2:
+                    handshake_given = st.checkbox(
+                        "🤝 Was a Hollywood Handshake given?",
+                        value=existing_results.get('handshake_given', False)
+                    )
+                    
+                    eliminated_baker = st.selectbox(
+                        "😢 Baker Eliminated:",
+                        options=[""] + data['bakers'],
+                        index=data['bakers'].index(existing_results.get('eliminated_baker')) + 1
+                        if existing_results.get('eliminated_baker') in data['bakers'] else 0
+                    )
+                
+                submit_results = st.form_submit_button("Save Episode Results")
+                
+                if submit_results:
+                    data['results'][str(result_week)] = {
+                        'star_baker': star_baker_result,
+                        'technical_winner': technical_winner_result,
+                        'handshake_given': handshake_given,
+                        'eliminated_baker': eliminated_baker,
+                        'updated_at': datetime.now().isoformat()
+                    }
+                    
+                    save_data('results', data['results'])
+                    st.success(f"✅ Results for Week {result_week} saved!")
+                    
         with tab2:
             st.subheader("Manage Bakers")
-            # ... unchanged ...
+            
+            # Add new baker
+            new_baker = st.text_input("Add new baker:")
+            if st.button("Add Baker") and new_baker:
+                if new_baker not in data['bakers']:
+                    data['bakers'].append(new_baker)
+                    save_data('bakers', data['bakers'])
+                    st.success(f"Added {new_baker}")
+                    st.rerun()
+            
+            # Remove baker
+            if data['bakers']:
+                baker_to_remove = st.selectbox("Remove baker:", [""] + data['bakers'])
+                if st.button("Remove Baker") and baker_to_remove:
+                    data['bakers'].remove(baker_to_remove)
+                    save_data('bakers', data['bakers'])
+                    st.success(f"Removed {baker_to_remove}")
+                    st.rerun()
+            
+            # Show current bakers
+            st.write("**Current Bakers:**")
+            for baker in data['bakers']:
+                st.write(f"- {baker}")
         with tab3:
             st.subheader("Manage Players & Emails")
             if data['users']:
