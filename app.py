@@ -320,7 +320,7 @@ elif page == "📝 Submit Picks":
             if len(final_three) < 3:
                 st.warning(f"**Conflict:** Your Season Winner and Finalists must be three different people. Please review your picks.")
             
-            if st.form_submit_button("Submit & Lock In Picks"):
+            if st.button("Submit & Lock In Picks", key=f"submit_{user_id}_{selected_week_key}"):
                 picks_data = {'star_baker': star_baker, 'technical_winner': technical_winner, 'eliminated_baker': eliminated_baker, 'handshake_prediction': handshake_prediction, 'season_winner': season_winner, 'finalist_1': finalist_1, 'finalist_2': finalist_2, 'submitted_at': datetime.now().isoformat()}
                 data['picks'][user_id][selected_week_key] = picks_data
                 save_data('picks', data['picks'])
