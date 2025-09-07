@@ -272,10 +272,10 @@ elif page == "📝 Submit Picks":
                 display_week_name = WEEK_DATES.get(selected_week_key, f"Week {selected_week_key}")
                 st.success(f"✅ Your picks for {display_week_name} have been submitted!")
                 rain(
-                    emoji="🎂",
+                    emoji="🍰",
                     font_size=54,
-                    falling_speed=5,
-                    animation_length="infinite",
+                    falling_speed=8,
+                    animation_length="10",
                 )
 
                 if user_email:
