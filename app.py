@@ -443,11 +443,6 @@ elif page == "⚙️ Admin Panel":
 
         with tab4:
             st.subheader("Data Management")
-            ###
-            else:
-                st.info("No players have registered yet.")
-        with tab4:
-            st.subheader("Data Management")
             
             col1, col2 = st.columns(2)
             
