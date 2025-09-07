@@ -101,4 +101,3 @@ def send_commissioner_update_email(
         st.info(f"An update email has been sent to the commissioner at {commissioner_email}.")
     except Exception as e:
         st.error(f"Failed to send commissioner update email. Error: {e}")
-
