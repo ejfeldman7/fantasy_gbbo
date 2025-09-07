@@ -167,7 +167,6 @@ def calculate_user_scores(data):
             results = data.get('results', {}).get(week)
             if results:
                 if picks.get('star_baker') == results.get('star_baker'): weekly_points += 5
-                # UPDATED: Add points for guessing the eliminated baker
                 if picks.get('eliminated_baker') == results.get('eliminated_baker'): weekly_points += 5
                 if picks.get('technical_winner') == results.get('technical_winner'): weekly_points += 3
                 if picks.get('handshake_prediction') and results.get('handshake_given'): weekly_points += 10
@@ -232,7 +231,6 @@ if page == "🏆 Leaderboard & Stats":
                                         'Player': player_name,
                                         'Star Baker': picks.get('star_baker', ''),
                                         'Technical': picks.get('technical_winner', ''),
-                                        # UPDATED: Add eliminated baker to the history view
                                         'Eliminated': picks.get('eliminated_baker', ''),
                                         'Handshake': '✓' if picks.get('handshake_prediction') else '✗',
                                         'Season Winner': picks.get('season_winner', ''),
@@ -300,17 +298,20 @@ elif page == "📝 Submit Picks":
                     st.subheader("2. Make Your Weekly Predictions")
                     star_baker = st.selectbox("⭐ Who will be Star Baker:", available_bakers, index=available_bakers.index(existing_picks.get('star_baker', available_bakers[0])) if existing_picks.get('star_baker') in available_bakers else 0)
                     technical_winner = st.selectbox("🏆 Who will win the Technical:", available_bakers, index=available_bakers.index(existing_picks.get('technical_winner', available_bakers[0])) if existing_picks.get('technical_winner') in available_bakers else 0)
-                    # UPDATED: Add new selectbox for eliminated baker
                     eliminated_baker = st.selectbox("😢 Who will be sent home:", available_bakers, index=available_bakers.index(existing_picks.get('eliminated_baker', available_bakers[0])) if existing_picks.get('eliminated_baker') in available_bakers else 0)
                     handshake_prediction = st.checkbox("🤝 Will there be a Hollywood Handshake?", value=existing_picks.get('handshake_prediction', False))
+
+                    if eliminated_baker == technical_winner or eliminated_baker == star_baker:
+                        st.warning("You currently have the same baker selected to be eliminated and win, consider changing picks")
                 with col2:
                     st.subheader("3. Make your End of Season Predictions")
                     season_winner = st.selectbox("👑 Season Winner:", available_bakers, index=available_bakers.index(existing_picks.get('season_winner', available_bakers[0])) if existing_picks.get('season_winner') in available_bakers else 0)
                     finalist_1 = st.selectbox("🥈 Finalist A:", available_bakers, index=available_bakers.index(existing_picks.get('finalist_1', available_bakers[1])) if existing_picks.get('finalist_1') in available_bakers else 1)
                     finalist_2 = st.selectbox("🥈 Finalist B:", available_bakers, index=available_bakers.index(existing_picks.get('finalist_2', available_bakers[2])) if existing_picks.get('finalist_2') in available_bakers else 2)
-                
+                    if eliminated_baker == season_winner or eliminated_baker == finalist_1 or eliminated_baker == finalist_2:
+                        st.warning("You currently have the same baker selected to be eliminated and be in the final, consider changing picks")
+
                 if st.form_submit_button("Submit & Lock In Picks"):
-                    # UPDATED: Add eliminated baker to the saved data
                     picks_data = {'star_baker': star_baker, 'technical_winner': technical_winner, 'eliminated_baker': eliminated_baker, 'handshake_prediction': handshake_prediction, 'season_winner': season_winner, 'finalist_1': finalist_1, 'finalist_2': finalist_2, 'submitted_at': datetime.now().isoformat()}
                     data['picks'][user_id][selected_week_key] = picks_data
                     save_data('picks', data['picks'])
@@ -352,7 +353,6 @@ elif page == "📖 Info Page":
     
     st.write("#### 1. Weekly Points")
     st.markdown("These are straightforward points for correctly predicting the episode's key events.")
-    # UPDATED: Added Eliminated Baker to the scoring table
     st.markdown("""
     | Correct Prediction         | Points Awarded |
     |----------------------------|----------------|
