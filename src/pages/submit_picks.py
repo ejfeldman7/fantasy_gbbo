@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 import streamlit as st
 from streamlit_extras.let_it_rain import rain
 
-from src.auth import is_email_allowed
 from src.config import REVEAL_DATES_UTC, WEEK_DATES
 from src.data_manager import DataManager
 from src.email_utils import send_confirmation_email
@@ -21,12 +20,21 @@ def show_page(data_manager: DataManager, user_email: str):
     user_name = user["name"]
     st.success(f"Welcome, **{user_name}**! You're ready to submit your picks.")
 
-    now_utc = datetime.now(timezone.utc)
-    available_weeks = [k for k, v in REVEAL_DATES_UTC.items() if now_utc < v]
+    # Check if admin has enabled all weeks
+    admin_override = st.session_state.get("admin_allow_all_weeks", False)
 
-    if not available_weeks:
-        st.warning("All submission deadlines have passed for this season.")
-        return
+    if admin_override:
+        # Show all weeks when admin override is active
+        available_weeks = list(WEEK_DATES.keys())
+        st.info("🎛️ **Admin Mode**: All weeks available for picks")
+    else:
+        # Normal date-based filtering
+        now_utc = datetime.now(timezone.utc)
+        available_weeks = [k for k, v in REVEAL_DATES_UTC.items() if now_utc < v]
+
+        if not available_weeks:
+            st.warning("All submission deadlines have passed for this season.")
+            return
 
     selected_week = st.selectbox(
         "Select Week:",
