@@ -4,7 +4,6 @@ Main Streamlit application for Fantasy GBBO - Updated for PostgreSQL
 
 import streamlit as st
 from src.data_manager import DataManager
-from src.config import WEEK_DATES, REVEAL_DATES_UTC
 import src.pages.admin as admin_page
 import src.pages.info as info_page
 import src.pages.leaderboard as leaderboard_page
