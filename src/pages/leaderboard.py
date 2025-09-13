@@ -5,7 +5,6 @@ import streamlit as st
 
 from src.config import REVEAL_DATES_UTC, WEEK_DATES
 from src.data_manager import DataManager
-from src.scoring import calculate_user_scores
 
 
 def show_page(data_manager: DataManager):
