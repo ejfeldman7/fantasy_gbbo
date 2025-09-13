@@ -74,22 +74,24 @@ class DataManager:
         return self.db.delete_baker(baker_id)
 
     # Picks management methods
-    def save_user_picks(
-        self, user_email: str, week: int, picks: Dict[str, Any]
-    ) -> bool:
+    def save_user_picks(self, user_email: str, week, picks: Dict[str, Any]) -> bool:
         """Save user picks (maintains original interface using email)"""
         user = self.get_user_by_email(user_email)
         if not user:
             st.error("User not found")
             return False
-        return self.db.save_picks(user["id"], week, picks)
+        # Convert week to integer if it's a string
+        week_int = int(week) if isinstance(week, str) else week
+        return self.db.save_picks(user["id"], week_int, picks)
 
-    def get_user_picks(self, user_email: str, week: int) -> Optional[Dict]:
+    def get_user_picks(self, user_email: str, week) -> Optional[Dict]:
         """Get user picks by email"""
         user = self.get_user_by_email(user_email)
         if not user:
             return None
-        return self.db.get_user_picks(user["id"], week)
+        # Convert week to integer if it's a string
+        week_int = int(week) if isinstance(week, str) else week
+        return self.db.get_user_picks(user["id"], week_int)
 
     def get_all_picks_for_week(self, week: int) -> List[Dict]:
         """Get all picks for a specific week"""
