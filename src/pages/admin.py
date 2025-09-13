@@ -6,8 +6,6 @@ import streamlit as st
 
 from src.config import WEEK_DATES
 from src.data_manager import DataManager
-from src.email_utils import send_commissioner_update_email
-from src.scoring import calculate_user_scores, run_final_scoring
 
 
 def show_page(data_manager: DataManager):
@@ -25,13 +23,43 @@ def show_page(data_manager: DataManager):
         "Enter admin password:", type="password", key="admin_pw"
     )
     if admin_password == admin_secret:
+        # Admin controls at the top
+        st.subheader("🎛️ Admin Controls")
+
+        # Initialize session state for admin settings
+        if "admin_allow_all_weeks" not in st.session_state:
+            st.session_state.admin_allow_all_weeks = False
+
+        col1, col2 = st.columns([1, 3])
+        with col1:
+            allow_all_weeks = st.checkbox(
+                "🗓️ Allow picks for all weeks",
+                value=st.session_state.admin_allow_all_weeks,
+                help="When enabled, users can submit picks for any week regardless of deadlines",
+            )
+            if allow_all_weeks != st.session_state.admin_allow_all_weeks:
+                st.session_state.admin_allow_all_weeks = allow_all_weeks
+                if allow_all_weeks:
+                    st.success("✅ All weeks are now available for picks!")
+                else:
+                    st.info("📅 Normal week restrictions applied.")
+
+        with col2:
+            if st.session_state.admin_allow_all_weeks:
+                st.warning(
+                    "⚠️ **Admin Override Active**: Users can submit picks for any week"
+                )
+            else:
+                st.info("📅 Normal deadline restrictions in effect")
+
+        st.markdown("---")
+
         tabs = st.tabs(
             [
                 "Episode Results",
                 "Manage Bakers",
                 "Manage Players",
                 "Data Management",
-                "🏆 Final Scoring",
             ]
         )
         with tabs[0]:
@@ -42,8 +70,6 @@ def show_page(data_manager: DataManager):
             _show_manage_players_tab(data_manager)
         with tabs[3]:
             _show_data_management_tab(data_manager)
-        with tabs[4]:
-            _show_final_scoring_tab(data_manager)
 
     elif admin_password:
         st.error("❌ Incorrect admin password")
@@ -51,7 +77,6 @@ def show_page(data_manager: DataManager):
 
 def _show_episode_results_tab(dm: DataManager):
     st.subheader("Enter Episode Results")
-    data = dm.get_data()
     week_options = list(WEEK_DATES.keys())
     result_week_key = st.selectbox(
         "Select Week:",
@@ -60,8 +85,12 @@ def _show_episode_results_tab(dm: DataManager):
         key="admin_week_select",
     )
 
-    existing_results = data.get("results", {}).get(result_week_key, {})
-    baker_options = [""] + data.get("bakers", [])
+    # Get existing results for this week from database
+    existing_results = dm.get_weekly_results(int(result_week_key)) or {}
+
+    # Get bakers from database
+    bakers = dm.get_active_bakers()
+    baker_options = [""] + bakers
 
     with st.form(f"results_week_{result_week_key}"):
         col1, col2 = st.columns(2)
@@ -69,26 +98,26 @@ def _show_episode_results_tab(dm: DataManager):
             sb = st.selectbox(
                 "⭐ Actual Star Baker:",
                 baker_options,
-                index=baker_options.index(existing_results.get("star_baker"))
+                index=baker_options.index(existing_results.get("star_baker", ""))
                 if existing_results.get("star_baker") in baker_options
                 else 0,
             )
             tw = st.selectbox(
                 "🏆 Technical Winner:",
                 baker_options,
-                index=baker_options.index(existing_results.get("technical_winner"))
+                index=baker_options.index(existing_results.get("technical_winner", ""))
                 if existing_results.get("technical_winner") in baker_options
                 else 0,
             )
         with col2:
             hh = st.checkbox(
                 "🤝 Was a Handshake given?",
-                value=existing_results.get("handshake_given", False),
+                value=existing_results.get("hollywood_handshake", False),
             )
             eb = st.selectbox(
                 "😢 Baker Eliminated:",
                 baker_options,
-                index=baker_options.index(existing_results.get("eliminated_baker"))
+                index=baker_options.index(existing_results.get("eliminated_baker", ""))
                 if existing_results.get("eliminated_baker") in baker_options
                 else 0,
             )
@@ -97,178 +126,169 @@ def _show_episode_results_tab(dm: DataManager):
             results_data = {
                 "star_baker": sb,
                 "technical_winner": tw,
-                "handshake_given": hh,
+                "hollywood_handshake": hh,
                 "eliminated_baker": eb,
-                "updated_at": datetime.now().isoformat(),
             }
-            data["results"][result_week_key] = results_data
-            dm.save_data("results")
-            st.success(f"✅ Results for {WEEK_DATES.get(result_week_key)} saved!")
 
-            # Trigger commissioner email
-            updated_scores = calculate_user_scores(data)
-            df_data = [
-                {
-                    "Player": data["users"].get(uid, {}).get("name"),
-                    "Weekly": s["weekly_points"],
-                    "Foresight": s["foresight_points"],
-                    "Total": s["total_points"],
-                }
-                for uid, s in updated_scores.items()
-            ]
-            leaderboard_df = pd.DataFrame(df_data).sort_values("Total", ascending=False)
-            leaderboard_df.index = range(1, len(leaderboard_df) + 1)
-            send_commissioner_update_email(
-                WEEK_DATES.get(result_week_key), results_data, leaderboard_df
-            )
+            if dm.save_weekly_results(int(result_week_key), results_data):
+                st.success(f"✅ Results for {WEEK_DATES.get(result_week_key)} saved!")
+
+                # If a baker was eliminated, mark them as eliminated in the database
+                if eb and eb != "":
+                    dm.eliminate_baker(eb, int(result_week_key))
+                    st.success(f"🏠 {eb} has been marked as eliminated.")
+            else:
+                st.error("Failed to save results. Please try again.")
 
 
 def _show_manage_bakers_tab(dm: DataManager):
     st.subheader("Manage Bakers")
-    data = dm.get_data()
+
+    # Add new baker
     new_baker = st.text_input("Add new baker:")
     if st.button("Add Baker") and new_baker:
-        if new_baker not in data["bakers"]:
-            data["bakers"].append(new_baker)
-            dm.save_data("bakers")
+        if dm.add_baker(new_baker):
             st.success(f"Added {new_baker}")
             st.rerun()
+        else:
+            st.error("Failed to add baker")
 
-    if data.get("bakers"):
-        baker_to_remove = st.selectbox("Remove baker:", [""] + data["bakers"])
+    # Display all bakers
+    all_bakers = dm.get_all_bakers()
+    if all_bakers:
+        st.subheader("Current Bakers")
+        df = pd.DataFrame(all_bakers)
+        st.dataframe(df[["name", "is_eliminated"]], use_container_width=True)
+
+        # Remove baker option
+        baker_names = [baker["name"] for baker in all_bakers]
+        baker_to_remove = st.selectbox("Remove baker:", [""] + baker_names)
         if st.button("Remove Baker") and baker_to_remove:
-            data["bakers"].remove(baker_to_remove)
-            dm.save_data("bakers")
-            st.success(f"Removed {baker_to_remove}")
-            st.rerun()
-    st.write("**Current Bakers:**", ", ".join(data.get("bakers", [])))
+            baker_id = next(
+                (
+                    baker["id"]
+                    for baker in all_bakers
+                    if baker["name"] == baker_to_remove
+                ),
+                None,
+            )
+            if baker_id and dm.delete_baker(baker_id):
+                st.success(f"Removed {baker_to_remove}")
+                st.rerun()
+            else:
+                st.error("Failed to remove baker")
+    else:
+        st.info("No bakers added yet.")
 
 
 def _show_manage_players_tab(dm: DataManager):
     st.subheader("Manage Players & Emails")
-    data = dm.get_data()
-    if not data.get("users"):
+
+    # Get all users from database
+    users = dm.get_all_users()
+    if not users:
         st.info("No players have registered yet.")
         return
 
+    # Display users table
     player_df = pd.DataFrame(
         [
             {
-                "User ID": uid,
-                "Name": uinfo.get("name"),
-                "Email": uinfo.get("email", "N/A"),
+                "ID": user["id"],
+                "Name": user["name"],
+                "Email": user["email"],
+                "Created": str(user.get("created_at", ""))[:16]
+                if user.get("created_at")
+                else "",
             }
-            for uid, uinfo in data["users"].items()
+            for user in users
         ]
     )
-    st.dataframe(player_df, use_container_width=True, hide_index=True)
+    st.dataframe(
+        player_df[["Name", "Email", "Created"]],
+        use_container_width=True,
+        hide_index=True,
+    )
+
     st.markdown("---")
     st.subheader("✏️ Edit or Remove a Player")
 
-    player_list = list(data.get("users", {}).keys())
-    player_to_edit = st.selectbox(
-        "Select a player to manage:",
-        options=[""] + player_list,
-        format_func=lambda uid: data.get("users", {})
-        .get(uid, {})
-        .get("name", "Unknown")
-        if uid
-        else "--- Select a Player ---",
-    )
+    # Player selection dropdown
+    player_options = [""] + [f"{user['name']} ({user['email']})" for user in users]
+    selected_player = st.selectbox("Select a player to manage:", options=player_options)
 
-    if player_to_edit:
-        user_info = data["users"][player_to_edit]
-        with st.form(f"edit_player_{player_to_edit}"):
-            st.write(f"**Editing Profile for: {user_info.get('name')}**")
-            new_name = st.text_input("Player Name", value=user_info.get("name", ""))
-            new_email = st.text_input("Player Email", value=user_info.get("email", ""))
-            if st.form_submit_button("💾 Save Changes"):
-                data["users"][player_to_edit]["name"] = new_name
-                data["users"][player_to_edit]["email"] = new_email
-                dm.save_data("users")
-                st.success(f"✅ Player '{new_name}' has been updated.")
-                st.rerun()
+    if selected_player and selected_player != "":
+        # Find the selected user
+        user_email = selected_player.split("(")[1].split(")")[0]
+        user = next((u for u in users if u["email"] == user_email), None)
 
-        with st.expander("🗑️ Remove Player (Permanent)"):
-            st.warning(
-                f"**Warning:** This will permanently delete **{user_info.get('name')}** and all of their picks."
-            )
-            if st.button(f"DELETE {user_info.get('name')}'s Profile", type="primary"):
-                del data["users"][player_to_edit]
-                if player_to_edit in data.get("picks", {}):
-                    del data["picks"][player_to_edit]
-                    dm.save_data("picks")
-                dm.save_data("users")
-                st.success(f"🗑️ Player '{user_info.get('name')}' and all data removed.")
-                st.rerun()
+        if user:
+            with st.form(f"edit_player_{user['id']}"):
+                st.write(f"**Editing Profile for: {user['name']}**")
+                new_name = st.text_input("Player Name", value=user["name"])
+                new_email = st.text_input("Player Email", value=user["email"])
+                if st.form_submit_button("💾 Save Changes"):
+                    if dm.update_user(user["id"], new_name, new_email):
+                        st.success(f"✅ Player '{new_name}' has been updated.")
+                        st.rerun()
+                    else:
+                        st.error("Failed to update player.")
+
+            with st.expander("🗑️ Remove Player (Permanent)"):
+                st.warning(
+                    f"**Warning:** This will permanently delete **{user['name']}** and all of their picks."
+                )
+                if st.button(f"DELETE {user['name']}'s Profile", type="primary"):
+                    if dm.delete_user(user["id"]):
+                        st.success(f"🗑️ Player '{user['name']}' and all data removed.")
+                        st.rerun()
+                    else:
+                        st.error("Failed to delete player.")
 
 
 def _show_data_management_tab(dm: DataManager):
     st.subheader("Data Management")
-    if st.button("Download All Data as JSON"):
-        all_data_str = json.dumps(dm.get_data(), indent=2)
-        st.download_button(
-            label="📥 Click to Download",
-            data=all_data_str,
-            file_name=f"bakeoff_backup_{datetime.now().strftime('%Y%m%d')}.json",
-            mime="application/json",
-        )
 
+    # Backup data
+    if st.button("Create Data Backup"):
+        backup_data = dm.backup_data()
+        if backup_data:
+            backup_str = json.dumps(backup_data, indent=2, default=str)
+            st.download_button(
+                label="📥 Click to Download Backup",
+                data=backup_str,
+                file_name=f"bakeoff_backup_{datetime.now().strftime('%Y%m%d')}.json",
+                mime="application/json",
+            )
+            st.success("Backup created successfully!")
+        else:
+            st.error("Failed to create backup")
+
+    # Show data summary
+    st.subheader("📊 Data Summary")
+    users = dm.get_all_users()
+    all_picks = dm.get_all_picks()
+    all_bakers = dm.get_all_bakers()
+    weekly_results = dm.get_all_weekly_results()
+
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Users", len(users))
+    with col2:
+        st.metric("Total Picks", len(all_picks))
+    with col3:
+        st.metric("Bakers", len(all_bakers))
+    with col4:
+        st.metric("Weekly Results", len(weekly_results))
+
+    # Reset data
     with st.expander("⚠️ Reset All Data (Permanent)"):
         st.warning(
-            "This will delete all users, picks, and results. This cannot be undone."
+            "This will delete all users, picks, bakers, and results. This cannot be undone."
         )
         if st.button("RESET ALL LEAGUE DATA", type="primary"):
-            dm.reset_all_data()
-            st.success("All league data has been reset.")
-            st.rerun()
-
-
-def _show_final_scoring_tab(dm: DataManager):
-    st.subheader("🏆 Final Season Scoring")
-    st.info(
-        "Use this tool **only after the season finale** to calculate final Foresight Points."
-    )
-    data = dm.get_data()
-    baker_options = data.get("bakers", [])
-    if not baker_options:
-        st.warning("Please add bakers in the 'Manage Bakers' tab.")
-        return
-
-    with st.form("final_scoring_form"):
-        st.write("Select the official season results:")
-        final_winner = st.selectbox("👑 Season Winner", options=[""] + baker_options)
-        final_finalists = st.multiselect(
-            "🥈🥉 The Other Two Finalists", options=baker_options, max_selections=2
-        )
-
-        if st.form_submit_button("CALCULATE & SAVE FINAL SCORES"):
-            if final_winner and len(final_finalists) == 2:
-                if final_winner not in final_finalists:
-                    foresight_scores = run_final_scoring(
-                        data, final_winner, final_finalists
-                    )
-                    data["final_scores"] = foresight_scores
-                    dm.save_data("final_scores")
-                    st.success("Foresight Points calculated and saved successfully!")
-                    st.balloons()
-
-                    results_df = pd.DataFrame.from_dict(
-                        foresight_scores, orient="index", columns=["Foresight Points"]
-                    )
-                    results_df.index.name = "User ID"
-                    player_names = {
-                        uid: u.get("name", "Unknown")
-                        for uid, u in data.get("users", {}).items()
-                    }
-                    results_df["Player"] = results_df.index.map(player_names)
-                    st.dataframe(
-                        results_df[["Player", "Foresight Points"]].sort_values(
-                            "Foresight Points", ascending=False
-                        ),
-                        use_container_width=True,
-                    )
-                else:
-                    st.error("The winner cannot also be selected as a finalist.")
+            if dm.reset_all_data():
+                st.success("All league data has been reset.")
+                st.rerun()
             else:
-                st.error("Please select one winner and two finalists.")
+                st.error("Failed to reset data")
