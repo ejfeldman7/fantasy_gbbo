@@ -23,6 +23,37 @@ def show_page(data_manager: DataManager):
         "Enter admin password:", type="password", key="admin_pw"
     )
     if admin_password == admin_secret:
+        # Admin controls at the top
+        st.subheader("🎛️ Admin Controls")
+
+        # Initialize session state for admin settings
+        if "admin_allow_all_weeks" not in st.session_state:
+            st.session_state.admin_allow_all_weeks = False
+
+        col1, col2 = st.columns([1, 3])
+        with col1:
+            allow_all_weeks = st.checkbox(
+                "🗓️ Allow picks for all weeks",
+                value=st.session_state.admin_allow_all_weeks,
+                help="When enabled, users can submit picks for any week regardless of deadlines",
+            )
+            if allow_all_weeks != st.session_state.admin_allow_all_weeks:
+                st.session_state.admin_allow_all_weeks = allow_all_weeks
+                if allow_all_weeks:
+                    st.success("✅ All weeks are now available for picks!")
+                else:
+                    st.info("📅 Normal week restrictions applied.")
+
+        with col2:
+            if st.session_state.admin_allow_all_weeks:
+                st.warning(
+                    "⚠️ **Admin Override Active**: Users can submit picks for any week"
+                )
+            else:
+                st.info("📅 Normal deadline restrictions in effect")
+
+        st.markdown("---")
+
         tabs = st.tabs(
             [
                 "Episode Results",
