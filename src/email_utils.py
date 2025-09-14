@@ -36,7 +36,7 @@ def send_confirmation_email(
             <li><strong>⭐ Star Baker:</strong> {picks.get('star_baker', 'N/A')}</li>
             <li><strong>🏆 Technical Winner:</strong> {picks.get('technical_winner', 'N/A')}</li>
             <li><strong>😢 Eliminated Baker:</strong> {picks.get('eliminated_baker', 'N/A')}</li>
-            <li><strong>🤝 Handshake:</strong> {'Yes' if picks.get('handshake_prediction') else 'No'}</li>
+            <li><strong>🤝 Handshake:</strong> {'Yes' if picks.get('hollywood_handshake') else 'No'}</li>
         </ul>
         <h4>Season Predictions:</h4><ul>
             <li><strong>👑 Season Winner:</strong> {picks.get('season_winner', 'N/A')}</li>
