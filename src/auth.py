@@ -1,7 +1,7 @@
 import streamlit as st
 
 
-def _normalize_email(email: str) -> str:
+def normalize_email(email: str) -> str:
     """
     Normalizes an email address by making it lowercase and removing periods
     from the local part (before the @).
@@ -37,7 +37,7 @@ def is_email_allowed(user_email: str) -> bool:
         # This maintains original functionality if the feature isn't configured.
         return True
 
-    normalized_allowed_list = [_normalize_email(email) for email in allowed_emails_raw]
+    normalized_allowed_list = [normalize_email(email) for email in allowed_emails_raw]
     normalized_user_email = _normalize_email(user_email)
 
     return normalized_user_email in normalized_allowed_list
