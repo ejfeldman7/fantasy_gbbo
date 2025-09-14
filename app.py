@@ -3,6 +3,7 @@ Main Streamlit application for Fantasy GBBO - Updated for PostgreSQL
 """
 
 import streamlit as st
+from src.auth import normalize_email
 from src.data_manager import DataManager
 import src.pages.admin as admin_page
 import src.pages.info as info_page
@@ -61,9 +62,10 @@ def show_login_form(data_manager):
 
         if st.button("Login", key="login_button"):
             if email:
-                user = data_manager.get_user_by_email(email)
+                
+                user = data_manager.get_user_by_email(norm_email)
                 if user:
-                    st.session_state.user_email = email
+                    st.session_state.user_email = norm_email
                     st.session_state.user_name = user["name"]
                     st.session_state.logged_in = True
                     st.rerun()
@@ -76,18 +78,18 @@ def show_login_form(data_manager):
         st.subheader("Register")
         name = st.text_input("Name", key="register_name")
         email = st.text_input("Email", key="register_email")
-
+        norm_email = normalize_email(email)
         if st.button("Register", key="register_button"):
             if name and email:
                 # Check if email is allowed (if allow-list is configured)
-                if not is_email_allowed(email):
+                if not is_email_allowed(norm_email):
                     st.error(
                         "Sorry, registration is currently limited to invited participants."
                     )
                     return
 
                 # Check if user already exists
-                existing_user = data_manager.get_user_by_email(email)
+                existing_user = data_manager.get_user_by_email(norm_email)
                 if existing_user:
                     st.error(
                         "A user with this email already exists. Please login instead."
@@ -95,10 +97,10 @@ def show_login_form(data_manager):
                     return
 
                 # Register new user
-                if data_manager.add_user(name, email):
-                    st.session_state.user_email = email
+                if data_manager.add_user(name, norm_email):
+                    st.session_state.user_email = norm_email
                     st.session_state.user_name = name
-                    st.session_state.logged_in = True
+                    st.session_state.logged_in= True
                     st.success(f"Welcome to the league, {name}!")
                     st.rerun()
                 else:
