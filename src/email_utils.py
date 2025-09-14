@@ -50,7 +50,7 @@ def send_confirmation_email(
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
             smtp.login(sender_email, sender_password)
             smtp.send_message(msg)
-        st.info(f"A confirmation email has been sent to {recipient_email}.")
+        st.info(f"A confirmation email was sent to {recipient_email}.")
     except Exception as e:
         st.error(f"Failed to send confirmation email. Error: {e}")
 

@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import streamlit as st
 from streamlit_extras.let_it_rain import rain
 
+from src.auth import normalize_email
 from src.config import REVEAL_DATES_UTC, WEEK_DATES
 from src.data_manager import DataManager
 from src.email_utils import send_confirmation_email
@@ -10,9 +11,9 @@ from src.email_utils import send_confirmation_email
 
 def show_page(data_manager: DataManager, user_email: str):
     st.title("📝 Submit Your Weekly Picks")
-
+    email_norm = normalize_email(user_email)
     # Get user information from database
-    user = data_manager.get_user_by_email(user_email)
+    user = data_manager.get_user_by_email(email_norm)
     if not user:
         st.error("User not found. Please log in again.")
         return
@@ -145,9 +146,8 @@ def show_page(data_manager: DataManager, user_email: str):
         # Save picks to database
         if data_manager.save_user_picks(user_email, selected_week, picks_data):
             week_display = WEEK_DATES.get(selected_week, f"Week {selected_week}")
-            st.success(f"✅ Your picks for {week_display} have been submitted!")
+            st.success(f"✅ Picks for {week_display} have been submitted!")
             rain(emoji="🍰", font_size=54, falling_speed=3, animation_length="5s")
-
             # Send confirmation email
             send_confirmation_email(user_email, user_name, week_display, picks_data)
         else:
