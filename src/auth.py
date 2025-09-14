@@ -38,6 +38,6 @@ def is_email_allowed(user_email: str) -> bool:
         return True
 
     normalized_allowed_list = [normalize_email(email) for email in allowed_emails_raw]
-    normalized_user_email = _normalize_email(user_email)
+    normalized_user_email = normalize_email(user_email)
 
     return normalized_user_email in normalized_allowed_list
