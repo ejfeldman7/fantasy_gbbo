@@ -11,7 +11,7 @@ from src.email_utils import send_confirmation_email
 
 def show_page(data_manager: DataManager, user_email: str):
     st.title("📝 Submit Your Weekly Picks")
-    email_norm = _normalize_email‎(user_email)
+    email_norm = normalize_email(user_email)
     # Get user information from database
     user = data_manager.get_user_by_email(email_norm)
     if not user:
