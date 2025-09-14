@@ -62,7 +62,7 @@ def show_login_form(data_manager):
 
         if st.button("Login", key="login_button"):
             if email:
-                
+                norm_email = normalize_email(email)
                 user = data_manager.get_user_by_email(norm_email)
                 if user:
                     st.session_state.user_email = norm_email
