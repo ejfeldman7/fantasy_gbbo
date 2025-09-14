@@ -40,8 +40,8 @@ def send_confirmation_email(
         </ul>
         <h4>Season Predictions:</h4><ul>
             <li><strong>👑 Season Winner:</strong> {picks.get('season_winner', 'N/A')}</li>
-            <li><strong>🥈 Finalist A:</strong> {picks.get('finalist_1', 'N/A')}</li>
-            <li><strong>🥈 Finalist B:</strong> {picks.get('finalist_2', 'N/A')}</li>
+            <li><strong>🥈 Finalist A:</strong> {picks.get('finalist_2', 'N/A')}</li>
+            <li><strong>🥈 Finalist B:</strong> {picks.get('finalist_3', 'N/A')}</li>
         </ul></div></body></html>
     """
     msg.set_content("This is a fallback for plain-text email clients.")
