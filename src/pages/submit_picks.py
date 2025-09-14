@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import streamlit as st
 from streamlit_extras.let_it_rain import rain
 
-from src.auth import normalize_email‎
+from src.auth import normalize_email
 from src.config import REVEAL_DATES_UTC, WEEK_DATES
 from src.data_manager import DataManager
 from src.email_utils import send_confirmation_email
