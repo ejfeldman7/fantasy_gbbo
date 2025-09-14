@@ -147,7 +147,7 @@ def show_page(data_manager: DataManager, user_email: str):
             week_display = WEEK_DATES.get(selected_week, f"Week {selected_week}")
             st.success(f"✅ Your picks for {week_display} have been submitted!")
             rain(emoji="🍰", font_size=54, falling_speed=3, animation_length="5s")
-
+            st.write("DEBUG PICKS SENT TO EMAIL:", picks_data)
             # Send confirmation email
             send_confirmation_email(user_email, user_name, week_display, picks_data)
         else:
