@@ -51,7 +51,7 @@ def send_confirmation_email(
             smtp.login(sender_email, sender_password)
             smtp.send_message(msg)
         st.info("DEBUG PICKS SENT TO EMAIL:", picks)
-        st.info(f"A confirmation email has been sent to {recipient_email}.")
+        st.info(f"A confirmation email was sent to {recipient_email}.")
     except Exception as e:
         st.error(f"Failed to send confirmation email. Error: {e}")
 
