@@ -84,7 +84,6 @@ def show_page(data_manager: DataManager):
                 "Week Settings",
                 "Data Management",
                 "🏆 Final Scoring",
-                "Week Settings"
             ]
         )
         with tabs[0]:
@@ -99,8 +98,6 @@ def show_page(data_manager: DataManager):
             _show_data_management_tab(data_manager)
         with tabs[5]:
             _show_final_scoring_tab(data_manager)
-        with tabs[6]:
-            _show_week_settings_tab(data_manager)
 
     elif admin_password:
         st.error("❌ Incorrect admin password")
