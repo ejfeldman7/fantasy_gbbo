@@ -24,7 +24,14 @@ st.set_page_config(
 @st.cache_resource
 def init_data_manager():
     """Initialize the data manager with database connection"""
-    return DataManager()
+    dm = DataManager()
+
+    # Initialize week settings from config if needed
+    from src.config import REVEAL_DATES_UTC
+
+    dm.initialize_week_settings(REVEAL_DATES_UTC)
+
+    return dm
 
 
 # Initialize session state
@@ -100,7 +107,7 @@ def show_login_form(data_manager):
                 if data_manager.add_user(name, norm_email):
                     st.session_state.user_email = norm_email
                     st.session_state.user_name = name
-                    st.session_state.logged_in= True
+                    st.session_state.logged_in = True
                     st.success(f"Welcome to the league, {name}!")
                     st.rerun()
                 else:

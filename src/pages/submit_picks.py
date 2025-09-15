@@ -3,17 +3,16 @@ from datetime import datetime, timezone
 import streamlit as st
 from streamlit_extras.let_it_rain import rain
 
-from src.auth import normalize_email
-from src.config import REVEAL_DATES_UTC, WEEK_DATES
+from src.config import WEEK_DATES
 from src.data_manager import DataManager
 from src.email_utils import send_confirmation_email
 
 
 def show_page(data_manager: DataManager, user_email: str):
     st.title("📝 Submit Your Weekly Picks")
-    email_norm = normalize_email(user_email)
+
     # Get user information from database
-    user = data_manager.get_user_by_email(email_norm)
+    user = data_manager.get_user_by_email(user_email)
     if not user:
         st.error("User not found. Please log in again.")
         return
@@ -21,21 +20,24 @@ def show_page(data_manager: DataManager, user_email: str):
     user_name = user["name"]
     st.success(f"Welcome, **{user_name}**! You're ready to submit your picks.")
 
-    # Check if admin has enabled all weeks
-    admin_override = st.session_state.get("admin_allow_all_weeks", False)
+    # Get available weeks from database (considers admin overrides)
+    now_utc = datetime.now(timezone.utc)
+    available_weeks = data_manager.get_available_weeks(now_utc)
 
-    if admin_override:
-        # Show all weeks when admin override is active
-        available_weeks = list(WEEK_DATES.keys())
-        st.info("🎛️ **Admin Mode**: All weeks available for picks")
-    else:
-        # Normal date-based filtering
-        now_utc = datetime.now(timezone.utc)
-        available_weeks = [k for k, v in REVEAL_DATES_UTC.items() if now_utc < v]
+    if not available_weeks:
+        st.warning("All submission deadlines have passed for this season.")
+        st.info("💡 Contact your commissioner if you need access to previous weeks.")
+        return
 
-        if not available_weeks:
-            st.warning("All submission deadlines have passed for this season.")
-            return
+    # Show info if any weeks have admin overrides active
+    week_settings = data_manager.get_week_settings()
+    admin_overrides = [
+        str(w["week_number"]) for w in week_settings if w.get("admin_override", False)
+    ]
+    if admin_overrides:
+        st.info(
+            f"🎛️ **Commissioner Override Active** for weeks: {', '.join(admin_overrides)}"
+        )
 
     selected_week = st.selectbox(
         "Select Week:",
@@ -146,8 +148,9 @@ def show_page(data_manager: DataManager, user_email: str):
         # Save picks to database
         if data_manager.save_user_picks(user_email, selected_week, picks_data):
             week_display = WEEK_DATES.get(selected_week, f"Week {selected_week}")
-            st.success(f"✅ Picks for {week_display} have been submitted!")
+            st.success(f"✅ Your picks for {week_display} have been submitted!")
             rain(emoji="🍰", font_size=54, falling_speed=3, animation_length="5s")
+
             # Send confirmation email
             send_confirmation_email(user_email, user_name, week_display, picks_data)
         else:

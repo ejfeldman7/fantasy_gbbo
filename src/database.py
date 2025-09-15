@@ -96,6 +96,19 @@ class DatabaseManager:
                 );
             """)
             )
+
+            # Week settings table for managing pick availability
+            s.execute(
+                text("""
+                CREATE TABLE IF NOT EXISTS week_settings (
+                    week_number INTEGER PRIMARY KEY,
+                    original_deadline TIMESTAMP,
+                    admin_override BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            )
             s.commit()
 
     # --- User management methods ---
@@ -408,6 +421,83 @@ class DatabaseManager:
             st.error(f"Error creating backup: {e}")
             return {}
 
+    # --- Week Settings Management ---
+
+    def initialize_week_settings(self, week_dates_config: Dict) -> bool:
+        """Initialize week settings from config if they don't exist."""
+        try:
+            with self.conn.session as s:
+                for week_str, deadline in week_dates_config.items():
+                    week_num = int(week_str)
+                    # Check if week already exists
+                    existing = self.conn.query(
+                        "SELECT week_number FROM week_settings WHERE week_number = :week",
+                        params=dict(week=week_num),
+                        ttl=0
+                    )
+                    
+                    if existing.empty:
+                        s.execute(
+                            text("""
+                                INSERT INTO week_settings (week_number, original_deadline) 
+                                VALUES (:week, :deadline)
+                            """),
+                            params=dict(week=week_num, deadline=deadline)
+                        )
+                s.commit()
+            return True
+        except Exception as e:
+            st.error(f"Error initializing week settings: {e}")
+            return False
+
+    def get_available_weeks(self, current_time) -> List[str]:
+        """Get list of weeks that are currently available for picks."""
+        try:
+            # Get all week settings
+            week_settings = self.conn.query("SELECT * FROM week_settings", ttl="30s")
+            available_weeks = []
+            
+            for _, week in week_settings.iterrows():
+                week_num = str(week['week_number'])
+                admin_override = week.get('admin_override', False)
+                original_deadline = week.get('original_deadline')
+                
+                # Allow if admin override is enabled OR if before original deadline
+                if admin_override or (original_deadline and current_time < original_deadline):
+                    available_weeks.append(week_num)
+            
+            return available_weeks
+        except Exception as e:
+            st.error(f"Error getting available weeks: {e}")
+            return []
+
+    def set_week_override(self, week_number: int, override_enabled: bool) -> bool:
+        """Set admin override for a specific week."""
+        try:
+            with self.conn.session as s:
+                s.execute(
+                    text("""
+                        UPDATE week_settings 
+                        SET admin_override = :override, updated_at = CURRENT_TIMESTAMP 
+                        WHERE week_number = :week
+                    """),
+                    params=dict(override=override_enabled, week=week_number)
+                )
+                s.commit()
+            return True
+        except Exception as e:
+            st.error(f"Error setting week override: {e}")
+            return False
+
+    def get_week_settings(self) -> List[Dict]:
+        """Get all week settings."""
+        try:
+            result = self.conn.query("SELECT * FROM week_settings ORDER BY week_number", ttl="30s")
+            return result.to_dict('records') if not result.empty else []
+        except Exception as e:
+            st.error(f"Error getting week settings: {e}")
+            return []
+
     def reset_all_data(self) -> bool:
         """Reset all data (use with caution!)."""
         try:
@@ -416,6 +506,7 @@ class DatabaseManager:
                 s.execute(text("DELETE FROM weekly_picks"))
                 s.execute(text("DELETE FROM weekly_results"))
                 s.execute(text("DELETE FROM final_results"))
+                s.execute(text("DELETE FROM week_settings"))
                 s.execute(text("DELETE FROM bakers"))
                 s.execute(text("DELETE FROM users"))
                 s.commit()
