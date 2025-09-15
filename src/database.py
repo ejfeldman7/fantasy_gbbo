@@ -450,56 +450,63 @@ class DatabaseManager:
             st.error(f"Error initializing week settings: {e}")
             return False
 
+    def _ensure_timezone_aware(self, dt, default_tz=None):
+        """Helper method to ensure datetime is timezone-aware."""
+        from datetime import timezone
+        import pandas as pd
+        
+        if default_tz is None:
+            default_tz = timezone.utc
+        
+        if dt is None:
+            return None
+            
+        try:
+            if isinstance(dt, pd.Timestamp):
+                if dt.tz is None:
+                    return dt.tz_localize(default_tz)
+                else:
+                    return dt.tz_convert(default_tz)
+            elif hasattr(dt, 'tzinfo'):
+                if dt.tzinfo is None:
+                    return dt.replace(tzinfo=default_tz)
+                else:
+                    return dt
+            else:
+                # Fallback: convert to pandas timestamp and localize
+                return pd.Timestamp(dt).tz_localize(default_tz)
+        except Exception:
+            # Last resort: return None to indicate failure
+            return None
+
     def get_available_weeks(self, current_time) -> List[str]:
         """Get list of weeks that are currently available for picks."""
         try:
-            from datetime import timezone
-
             # Get all week settings
             week_settings = self.conn.query("SELECT * FROM week_settings", ttl="30s")
             available_weeks = []
+
+            # Ensure current_time is timezone-aware
+            current_time = self._ensure_timezone_aware(current_time)
+            if current_time is None:
+                st.error("Invalid current_time provided")
+                return []
 
             for _, week in week_settings.iterrows():
                 week_num = str(week["week_number"])
                 admin_override = week.get("admin_override", False)
                 original_deadline = week.get("original_deadline")
 
-                # Allow if admin override is enabled OR if before original deadline
+                # Allow if admin override is enabled
                 if admin_override:
                     available_weeks.append(week_num)
-                elif original_deadline:
-                    # Ensure both datetimes have timezone info for comparison
-                    try:
-                        if (
-                            hasattr(original_deadline, "tzinfo")
-                            and original_deadline.tzinfo is None
-                        ):
-                            # Assume UTC if no timezone info
-                            original_deadline = original_deadline.replace(
-                                tzinfo=timezone.utc
-                            )
-                        elif not hasattr(original_deadline, "tzinfo"):
-                            # Handle pandas Timestamp objects
-                            if hasattr(original_deadline, "tz_localize"):
-                                original_deadline = original_deadline.tz_localize(
-                                    timezone.utc
-                                )
-
-                        # Ensure current_time is timezone-aware
-                        if (
-                            hasattr(current_time, "tzinfo")
-                            and current_time.tzinfo is None
-                        ):
-                            current_time = current_time.replace(tzinfo=timezone.utc)
-
-                        if current_time < original_deadline:
-                            available_weeks.append(week_num)
-                    except Exception as tz_error:
-                        st.warning(
-                            f"Timezone conversion error for week {week_num}: {tz_error}"
-                        )
-                        # Skip this week on timezone errors
-                        continue
+                    continue
+                    
+                # Check original deadline
+                if original_deadline is not None:
+                    original_deadline = self._ensure_timezone_aware(original_deadline)
+                    if original_deadline is not None and current_time < original_deadline:
+                        available_weeks.append(week_num)
 
             return available_weeks
         except Exception as e:
