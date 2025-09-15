@@ -1,133 +1,241 @@
-# fantasy_gbbo
+# 🍰 Fantasy Great British Bake Off
 
 <img width="1430" height="379" alt="image" src="https://github.com/user-attachments/assets/34089df2-b520-44ed-b87f-013cdf843909" />
 
 ## 🧁 Great Fantasy Bake Off League
-This is a self-hosted web application built with Streamlit for running a fantasy league based on The Great British Bake Off. It allows a group of friends or colleagues to make weekly and season-long predictions, automatically calculates scores, and provides a full suite of admin tools for the league commissioner.
 
-## Features
-### For Players
-- Profile Creation: Join the league by creating a simple profile with your name and email.
-- Email Allow-List: (Optional) Restrict registration to a pre-approved list of emails for private leagues.
-- Weekly Picks: Each week, submit predictions for:
-  - ⭐ Star Baker
-  - 🏆 Technical Challenge Winner
-  - 😢 Baker Sent Home
-  - 🤝 Hollywood Handshake (Yes/No)
-- Season Predictions: Alongside weekly picks, update your predictions for the ultimate Season Winner and the two other Finalists.
-- Live Validation: The app provides real-time warnings to prevent contradictory picks (e.g., picking a baker to be eliminated and also win the season).
-- Email Confirmations: Automatically receive an email summary of your picks upon submission.
-- Dynamic Leaderboard: View the current league standings, with scores updated as the commissioner enters official results.
-- Picks History: Review all predictions from past weeks after the submission deadline has passed, ensuring picks remain secret until they are locked in.
-- Info Page: A dedicated page explaining the scoring system, rules, and deadlines.
+A self-hosted web application built with Streamlit and powered by a PostgreSQL database for running a fantasy league based on The Great British Bake Off. Perfect for friend groups, families, or colleagues who want to add extra excitement to their Bake Off viewing experience with predictions, scoring, and leaderboards!
 
-### For the Commissioner (Admin Panel)
-- Password Protected: Simple password protection for all admin functions.
-- Enter Weekly Results: Easily input the official results after each episode to calculate weekly points.
-- Manage Bakers: Add the new cast of bakers at the start of the season and remove them as they are eliminated.
-- Manage Players: View, edit, or remove player profiles.
-- Final Scoring Tool: After the finale, enter the official winner and finalists to automatically calculate and apply the weighted "Foresight Points" to the leaderboard.
-- Data Management:
-  - Backup: Download all league data (users, picks, results) into a single JSON file at any time.
-  - Reset: Completely wipe all data to easily start a fresh season.
+## ✨ Features
+
+### 👥 For Players
+
+- **🆔 Simple Registration**: Join with just your name and email
+- **🔒 Email Allow-List**: Optional restriction to invited participants only
+- **📝 Weekly Predictions**: Submit picks for each episode:
+  - ⭐ **Star Baker** - Who will excel this week?
+  - 🏆 **Technical Winner** - First place in the technical challenge
+  - 😢 **Baker Eliminated** - Who goes home?
+  - 🤝 **Hollywood Handshake** - Will anyone earn the coveted handshake?
+- **🎯 Season-Long Predictions**: Update your finale predictions each week:
+  - 👑 **Season Winner** - Who will take the title?
+  - 🥈🥉 **Two Finalists** - Who else makes the final?
+- **⚠️ Smart Validation**: Real-time warnings prevent contradictory picks
+- **📧 Email Confirmations**: Automatic summary of your submissions
+- **🏆 Live Leaderboard**: See current standings with detailed score breakdowns
+- **📊 Advanced Scoring**:
+  - **Weekly Points** for episode predictions (3-10 points each)
+  - **Foresight Points** for season predictions (higher rewards for earlier correct picks!)
+- **📋 Picks History**: Review past predictions after deadlines pass
+- **📖 Info Page**: Complete scoring rules and strategy guide
+
+### 🎛️ For Commissioners (Admin Panel)
+
+- **🔐 Password Protection**: Secure access to all admin functions
+- **🎪 Admin Override**: Temporarily allow picks for any week regardless of deadlines
+- **📊 Enter Weekly Results**: Input official episode outcomes to update scores
+- **👥 Baker Management**: Add new contestants, track eliminations automatically
+- **👤 Player Management**: View, edit, or remove player accounts
+- **🏁 Final Scoring Tool**: Enter finale results to calculate all foresight points
+- **💾 Data Management**:
+  - **📥 Database Backups**: Export all data as JSON
+  - **📈 Real-time Stats**: View league metrics and participation
+  - **🔄 Full Reset**: Start fresh for a new season
+- **🌐 Cloud Database**: Powered by Neon PostgreSQL for reliability and scalability
 
 ## ⚙️ Setup and Installation
-Follow these steps to get the application running on your local machine or server.
 
-### 1. Prerequisites
--  Python 3.8+
-- pip
+### 🗄️ Database Setup (Neon PostgreSQL)
 
-### 2. Clone the Repository
-Clone this repository to your local machine:
+This app uses [Neon](https://neon.tech) as a managed PostgreSQL database. It's free and perfect for this application!
+
+1. **Create a Neon Account**: Sign up at [neon.tech](https://neon.tech)
+2. **Create a Database**: Create a new project with a database named `neondb`
+3. **Get Connection String**: Copy your connection string from the Neon dashboard
+
+### 💻 Local Development Setup
+
+#### Prerequisites
+
+- **Python 3.8+**
+- **pip** or **uv** (recommended)
+
+#### 1. Clone the Repository
+
+```bash
+git clone https://github.com/your-username/fantasy-gbbo.git
+cd fantasy-gbbo
 ```
-git clone [https://github.com/your-username/fantasy-bake-off.git](https://github.com/your-username/fantasy-bake-off.git)
-cd fantasy-bake-off
+
+#### 2. Create Virtual Environment & Install Dependencies
+
+```bash
+# Using uv (recommended)
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+# Or using uv (faster)
+uv sync
 ```
 
-### 3. Install Dependencies
-Install the required Python libraries from the requirements.txt file:
+#### 3. Configure Secrets
 
-```pip install -r requirements.txt```
+Create `.streamlit/secrets.toml` with your configuration:
 
-### 4. Create the Secrets File
-This app uses Streamlit's secrets management to handle email credentials securely.
-In the root of your project folder, create a new folder named .streamlit.
-Inside the .streamlit folder, create a new file named secrets.toml.
-Your project structure should look like this:
-```
-# .streamlit/secrets.toml
+```toml
+# Database connection (from your Neon dashboard)
+[connections.neon]
+url = "postgresql://username:password@host/neondb?sslmode=require"
 
-# Credentials for sending confirmation emails (e.g., Gmail)
-# NOTE: You must use a Google "App Password", not your regular password.
+# Email settings for confirmations (Gmail App Password required)
 [email_credentials]
 sender_name = "Fantasy Bake Off Commissioner"
 sender_email = "your_email@gmail.com"
 sender_password = "your_16_character_app_password"
 
-# Password to access the Admin Panel in the app
+# Admin panel access
 [admin_panel]
-admin_password = "a_secure_password_of_your_choice"
+admin_password = "your_secure_admin_password"
 
-# (Optional) Email Allow-List for registration
-# If this section is omitted, anyone can register.
+# Optional: Restrict registration to specific emails
 [allowed_emails]
 emails = [
-    "player.one@example.com",
-    "player.two@example.com",
-    "another-player@domain.org"
+    "player1@example.com",
+    "player2@example.com"
 ]
 ```
 
-### 5. Generate a Gmail "App Password"
-For security, you cannot use your regular Gmail password. You must generate a special App Password.
-Go to your Google Account settings: myaccount.google.com.
-Navigate to the Security tab.
-Ensure 2-Step Verification is turned On. You cannot create an App Password without it.
-At the bottom of the 2-Step Verification page, click on App passwords.
-Give the app a name (e.g., "Streamlit Bake Off") and click Create.
-Google will generate a 16-character password.  Copy this password (without spaces) and paste it as the sender_password value in your secrets.toml file.
+#### 4. Gmail App Password Setup
 
-### 6. Run the Application
-In your terminal, from the root directory of the project, run the following command:
-```streamlit run app.py```
-The application should now be running in your web browser!
+1. Go to [Google Account Settings](https://myaccount.google.com)
+2. Enable **2-Factor Authentication** (required)
+3. Go to **Security** → **App passwords**
+4. Create new app password for "Fantasy Bake Off"
+5. Use the 16-character password in your `secrets.toml`
 
-## 🗓️ Configuring for a New Season
-### To reset the app for a new season of Bake Off, follow these steps:
-- Update Dates in app.py:
-- Modify the WEEK_DATES dictionary to reflect the new season's schedule.
-- Modify the REVEAL_DATES_UTC dictionary with the new submission deadlines.
-- Reset All Data:
-  - Log in to the Admin Panel.
-  - Go to the "Data Management" tab.
-  - Use the "RESET ALL LEAGUE DATA" button to clear all old users, picks, and results.
+#### 5. Run the Application
 
-### Add New Bakers:
-- In the Admin Panel, go to the "Manage Bakers" tab.
-- Add each of the new season's contestants to the list.
+```bash
+streamlit run app.py
+```
 
-The league is now ready for a new season!
+Open your browser to `http://localhost:8501` 🎉
+
+### ☁️ Deployment Options
+
+- **Streamlit Community Cloud**: Connect your GitHub repo for free hosting
+- **Railway**: Easy PostgreSQL + Streamlit deployment
+- **Heroku**: Classic platform with PostgreSQL add-ons
+- **Self-hosted**: Any server with Python and PostgreSQL access
+
+## 🎬 Setting Up for a New Season
+
+### 📅 Update Season Configuration
+
+Edit `src/config.py` to match the new season:
+
+```python
+# Update week dates and deadlines
+WEEK_DATES = {
+    "2": "Week 2 (Date)",
+    "3": "Week 3 (Date)",
+    # ... add all weeks
+}
+
+REVEAL_DATES_UTC = {
+    "2": datetime(2025, 9, 19, 7, 0, 0, tzinfo=timezone.utc),
+    # ... submission deadlines for each week
+}
+```
+
+### 🧹 Reset League Data
+
+1. **Admin Panel** → **Data Management** tab
+2. **Create Backup** (optional but recommended!)
+3. **RESET ALL LEAGUE DATA** to clear old season
+
+### 👨‍🍳 Add New Contestants
+
+1. **Admin Panel** → **Manage Bakers** tab
+2. Add each new baker to the roster
+3. Bakers are automatically tracked as eliminated during the season
+
+### 🚀 Season Ready!
+
+Your league is now configured for the new season of Bake Off!
 
 ## 📁 Project Structure
+
 ```
-.
-├── .github/workflows/        # GitHub Actions for CI/CD
-│   └── static_analysis.yml
-├── .streamlit/
-│   └── secrets.toml          # Secure credentials (not committed)
-├── src/
-│   ├── pages/                # Each page of the Streamlit app
-│   │   ├── admin.py
-│   │   ├── info.py
-│   │   ├── leaderboard.py
-│   │   └── submit_picks.py
-│   ├── auth.py               # Email validation logic
-│   ├── config.py             # Season-specific dates and constants
-│   ├── data_manager.py       # OOP class for handling data files
-│   ├── email_utils.py        # Email sending functions
-│   └── scoring.py            # Scoring calculation logic
-├── app.py                    # Main entry point for the app
-├── requirements.txt          # Project dependencies
-└── README.md                 # This file
+fantasy-gbbo/
+├── 📂 src/
+│   ├── 📂 pages/             # Streamlit app pages
+│   │   ├── admin.py          # 🎛️ Admin panel with all management tools
+│   │   ├── info.py           # 📖 Rules and scoring explanation
+│   │   ├── leaderboard.py    # 🏆 Live scoring and standings
+│   │   └── submit_picks.py   # 📝 Weekly prediction submission
+│   ├── auth.py               # 🔐 Email validation and normalization
+│   ├── config.py             # 📅 Season dates and deadlines
+│   ├── data_manager.py       # 🗄️ Database abstraction layer
+│   ├── database.py           # 🐘 PostgreSQL database operations
+│   ├── email_utils.py        # 📧 Email confirmation system
+│   └── scoring.py            # 🧮 Points calculation engine
+├── 📂 .streamlit/
+│   └── secrets.toml          # 🔐 Database & email credentials
+├── 📂 .github/workflows/     # 🤖 CI/CD automation
+├── app.py                    # 🚀 Main application entry point
+├── requirements.txt          # 📦 Python dependencies
+└── README.md                 # 📖 This documentation
 ```
+
+## 🎯 Key Technologies
+
+- **🎨 Frontend**: Streamlit with beautiful UI components
+- **🗄️ Database**: Neon PostgreSQL (managed, serverless)
+- **📊 Data Processing**: Pandas for scoring calculations
+- **📧 Email**: SMTP integration for confirmations
+- **🔐 Security**: Streamlit secrets management
+- **🚀 Deployment**: Streamlit Community Cloud ready
+
+## 📊 Scoring System Details
+
+### Weekly Points (per episode)
+
+| Prediction             | Correct | Penalty                |
+| ---------------------- | ------- | ---------------------- |
+| 🤝 Hollywood Handshake | +10 pts | -10 pts                |
+| ⭐ Star Baker          | +5 pts  | -5 pts (if eliminated) |
+| 😢 Eliminated Baker    | +5 pts  | -5 pts (if star baker) |
+| 🏆 Technical Winner    | +3 pts  | None                   |
+
+### Foresight Points (season finale)
+
+- **👑 Season Winner**: `(11 - week_number) × 10` points
+- **🥈🥉 Finalists**: `(11 - week_number) × 5` points each
+- **Strategy**: Earlier correct predictions = exponentially more points!
+
+Example: Correctly picking the winner in Week 2 = **90 points**, but waiting until Week 9 = only **20 points**
+
+## 🛠️ Contributing
+
+Pull requests welcome! Please ensure your code:
+
+- ✅ Follows the existing code style
+- 📝 Includes proper docstrings
+- 🧪 Doesn't break existing functionality
+- 🎨 Maintains the fun, baking-themed UI
+
+## 📄 License
+
+This project is open source and available under the MIT License.
+
+---
+
+<div align="center">
+
+**🍰 Happy Baking and May the Best Predictions Win! 🏆**
+
+_Built with ❤️ for fans of The Great British Bake Off_
+
+</div>

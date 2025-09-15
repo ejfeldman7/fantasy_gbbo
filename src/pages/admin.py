@@ -60,6 +60,7 @@ def show_page(data_manager: DataManager):
                 "Manage Bakers",
                 "Manage Players",
                 "Data Management",
+                "🏆 Final Scoring",
             ]
         )
         with tabs[0]:
@@ -70,6 +71,8 @@ def show_page(data_manager: DataManager):
             _show_manage_players_tab(data_manager)
         with tabs[3]:
             _show_data_management_tab(data_manager)
+        with tabs[4]:
+            _show_final_scoring_tab(data_manager)
 
     elif admin_password:
         st.error("❌ Incorrect admin password")
@@ -292,3 +295,122 @@ def _show_data_management_tab(dm: DataManager):
                 st.rerun()
             else:
                 st.error("Failed to reset data")
+
+
+def _show_final_scoring_tab(dm: DataManager):
+    """Show final scoring tab for season finale."""
+    st.subheader("🏆 Final Season Scoring")
+    st.info(
+        "Use this tool **only after the season finale** to enter the final results and calculate Foresight Points."
+    )
+
+    # Get active bakers for selection
+    all_bakers = dm.get_all_bakers()
+    baker_options = [
+        baker["name"] for baker in all_bakers if not baker.get("is_eliminated", False)
+    ]
+
+    if not baker_options:
+        st.warning(
+            "No active bakers found. Please add bakers in the 'Manage Bakers' tab."
+        )
+        return
+
+    # Check if final results already exist
+    existing_results = dm.get_final_results()
+    if existing_results:
+        st.success("✅ Final results have already been entered!")
+        st.write("**Current Results:**")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.write(
+                f"🏆 **Winner:** {existing_results.get('season_winner', 'Unknown')}"
+            )
+        with col2:
+            st.write(
+                f"🥈 **Finalist 2:** {existing_results.get('finalist_2', 'Unknown')}"
+            )
+        with col3:
+            st.write(
+                f"🥉 **Finalist 3:** {existing_results.get('finalist_3', 'Unknown')}"
+            )
+
+        st.markdown("---")
+        if st.button("🔄 Update Final Results", type="secondary"):
+            # Allow updating results
+            existing_results = None
+
+    if not existing_results:
+        with st.form("final_scoring_form"):
+            st.write("Enter the official season finale results:")
+
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                final_winner = st.selectbox(
+                    "👑 Season Winner", options=[""] + baker_options
+                )
+            with col2:
+                finalist_2 = st.selectbox(
+                    "🥈 Second Finalist", options=[""] + baker_options
+                )
+            with col3:
+                finalist_3 = st.selectbox(
+                    "🥉 Third Finalist", options=[""] + baker_options
+                )
+
+            if st.form_submit_button(
+                "💾 Save Final Results & Calculate Foresight Points"
+            ):
+                if final_winner and finalist_2 and finalist_3:
+                    # Validate that all picks are different
+                    finalists = [final_winner, finalist_2, finalist_3]
+                    if len(set(finalists)) == 3:
+                        from src.scoring import run_final_scoring
+
+                        if run_final_scoring(dm, final_winner, finalist_2, finalist_3):
+                            st.success(
+                                "✅ Final results saved and foresight points calculated!"
+                            )
+                            st.balloons()
+
+                            # Show updated leaderboard preview
+                            from src.scoring import calculate_user_scores
+
+                            try:
+                                scores = calculate_user_scores(dm)
+                                if scores:
+                                    st.subheader("📊 Updated Final Leaderboard")
+                                    leaderboard_data = []
+                                    for email, user_scores in scores.items():
+                                        leaderboard_data.append(
+                                            {
+                                                "Player": user_scores["user_name"],
+                                                "Weekly Points": user_scores[
+                                                    "weekly_points"
+                                                ],
+                                                "Foresight Points": user_scores[
+                                                    "foresight_points"
+                                                ],
+                                                "Total Points": user_scores[
+                                                    "total_points"
+                                                ],
+                                            }
+                                        )
+
+                                    df = pd.DataFrame(leaderboard_data).sort_values(
+                                        "Total Points", ascending=False
+                                    )
+                                    df.index = range(1, len(df) + 1)
+                                    st.dataframe(df, use_container_width=True)
+                            except Exception as e:
+                                st.error(f"Error calculating final scores: {e}")
+
+                            st.rerun()
+                        else:
+                            st.error("Failed to save final results. Please try again.")
+                    else:
+                        st.error(
+                            "The winner and finalists must be three different bakers."
+                        )
+                else:
+                    st.error("Please select the winner and both finalists.")
