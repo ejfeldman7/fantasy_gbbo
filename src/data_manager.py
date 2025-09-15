@@ -134,6 +134,23 @@ class DataManager:
         """Reset all data"""
         return self.db.reset_all_data()
 
+    # Week settings management
+    def initialize_week_settings(self, week_dates_config: Dict) -> bool:
+        """Initialize week settings from config."""
+        return self.db.initialize_week_settings(week_dates_config)
+
+    def get_available_weeks(self, current_time) -> List[str]:
+        """Get weeks available for picks."""
+        return self.db.get_available_weeks(current_time)
+
+    def set_week_override(self, week_number: int, override_enabled: bool) -> bool:
+        """Set admin override for a week."""
+        return self.db.set_week_override(week_number, override_enabled)
+
+    def get_week_settings(self) -> List[Dict]:
+        """Get all week settings."""
+        return self.db.get_week_settings()
+
     # Legacy compatibility methods (if needed)
     def load_data(self):
         """Placeholder for legacy compatibility - no longer needed with DB"""

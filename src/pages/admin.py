@@ -26,31 +26,53 @@ def show_page(data_manager: DataManager):
         # Admin controls at the top
         st.subheader("🎛️ Admin Controls")
 
-        # Initialize session state for admin settings
-        if "admin_allow_all_weeks" not in st.session_state:
-            st.session_state.admin_allow_all_weeks = False
+        # Week Override Management
+        st.write("**📅 Week Availability Management**")
 
-        col1, col2 = st.columns([1, 3])
-        with col1:
-            allow_all_weeks = st.checkbox(
-                "🗓️ Allow picks for all weeks",
-                value=st.session_state.admin_allow_all_weeks,
-                help="When enabled, users can submit picks for any week regardless of deadlines",
-            )
-            if allow_all_weeks != st.session_state.admin_allow_all_weeks:
-                st.session_state.admin_allow_all_weeks = allow_all_weeks
-                if allow_all_weeks:
-                    st.success("✅ All weeks are now available for picks!")
-                else:
-                    st.info("📅 Normal week restrictions applied.")
+        week_settings = data_manager.get_week_settings()
+        if week_settings:
+            # Create a more compact display
+            cols = st.columns(len(week_settings))
+            changes_made = False
 
-        with col2:
-            if st.session_state.admin_allow_all_weeks:
-                st.warning(
-                    "⚠️ **Admin Override Active**: Users can submit picks for any week"
+            for i, week_setting in enumerate(week_settings):
+                with cols[i]:
+                    week_num = week_setting["week_number"]
+                    current_override = week_setting.get("admin_override", False)
+
+                    # Show week with current status
+                    from src.config import WEEK_DATES
+
+                    week_display = WEEK_DATES.get(str(week_num), f"Week {week_num}")
+
+                    new_override = st.checkbox(
+                        f"Week {week_num}",
+                        value=current_override,
+                        key=f"week_override_{week_num}",
+                        help=f"Override deadline for {week_display}",
+                    )
+
+                    if new_override != current_override:
+                        if data_manager.set_week_override(week_num, new_override):
+                            changes_made = True
+
+            if changes_made:
+                st.rerun()
+
+            # Show current override status
+            active_overrides = [
+                str(w["week_number"])
+                for w in week_settings
+                if w.get("admin_override", False)
+            ]
+            if active_overrides:
+                st.success(
+                    f"✅ **Active Overrides**: Weeks {', '.join(active_overrides)} are open for picks"
                 )
             else:
-                st.info("📅 Normal deadline restrictions in effect")
+                st.info("📅 All weeks following normal deadline restrictions")
+        else:
+            st.info("No week settings found. They will be initialized automatically.")
 
         st.markdown("---")
 
@@ -59,6 +81,7 @@ def show_page(data_manager: DataManager):
                 "Episode Results",
                 "Manage Bakers",
                 "Manage Players",
+                "Week Settings",
                 "Data Management",
                 "🏆 Final Scoring",
             ]
@@ -70,8 +93,10 @@ def show_page(data_manager: DataManager):
         with tabs[2]:
             _show_manage_players_tab(data_manager)
         with tabs[3]:
-            _show_data_management_tab(data_manager)
+            _show_week_settings_tab(data_manager)
         with tabs[4]:
+            _show_data_management_tab(data_manager)
+        with tabs[5]:
             _show_final_scoring_tab(data_manager)
 
     elif admin_password:
@@ -414,3 +439,145 @@ def _show_final_scoring_tab(dm: DataManager):
                         )
                 else:
                     st.error("Please select the winner and both finalists.")
+
+
+def _show_week_settings_tab(dm: DataManager):
+    """Show detailed week settings management."""
+    st.subheader("📅 Week Settings Management")
+    st.info("Manage pick submission deadlines and admin overrides for each week.")
+
+    week_settings = dm.get_week_settings()
+    if not week_settings:
+        st.warning(
+            "No week settings found. Initialize them by visiting the main admin controls above."
+        )
+        return
+
+    # Display current settings in a table
+    from src.config import WEEK_DATES
+    from datetime import datetime, timezone
+
+    table_data = []
+    for week in week_settings:
+        week_num = week["week_number"]
+        week_display = WEEK_DATES.get(str(week_num), f"Week {week_num}")
+        original_deadline = week.get("original_deadline")
+        admin_override = week.get("admin_override", False)
+
+        # Check if naturally available
+        now_utc = datetime.now(timezone.utc)
+        naturally_open = False
+        if original_deadline:
+            # Ensure both datetimes have timezone info for comparison
+            try:
+                if (
+                    hasattr(original_deadline, "tzinfo")
+                    and original_deadline.tzinfo is None
+                ):
+                    # Assume UTC if no timezone info
+                    original_deadline = original_deadline.replace(tzinfo=timezone.utc)
+                elif not hasattr(original_deadline, "tzinfo"):
+                    # Handle pandas Timestamp objects
+                    if hasattr(original_deadline, "tz_localize"):
+                        original_deadline = original_deadline.tz_localize(timezone.utc)
+
+                naturally_open = now_utc < original_deadline
+            except Exception:
+                # If timezone handling fails, assume closed
+                naturally_open = False
+
+        status = "🟢 Open" if (naturally_open or admin_override) else "🔴 Closed"
+        if admin_override:
+            status += " (Admin Override)"
+
+        table_data.append(
+            {
+                "Week": week_display,
+                "Original Deadline": str(original_deadline)[:16]
+                if original_deadline
+                else "Unknown",
+                "Status": status,
+                "Admin Override": "✅" if admin_override else "❌",
+            }
+        )
+
+    if table_data:
+        df = pd.DataFrame(table_data)
+        st.dataframe(df, use_container_width=True)
+
+    st.markdown("---")
+
+    # Quick actions
+    st.subheader("⚡ Quick Actions")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        if st.button("🔓 Open All Weeks"):
+            success_count = 0
+            for week in week_settings:
+                if dm.set_week_override(week["week_number"], True):
+                    success_count += 1
+            st.success(f"✅ Opened {success_count} weeks for picks!")
+            st.rerun()
+
+    with col2:
+        if st.button("🔒 Close All Overrides"):
+            success_count = 0
+            for week in week_settings:
+                if dm.set_week_override(week["week_number"], False):
+                    success_count += 1
+            st.success(f"✅ Removed overrides from {success_count} weeks!")
+            st.rerun()
+
+    with col3:
+        if st.button("🔄 Refresh Settings"):
+            st.rerun()
+
+    # Individual week management
+    st.markdown("---")
+    st.subheader("🎯 Individual Week Management")
+
+    selected_week = st.selectbox(
+        "Select week to manage:",
+        options=[None] + [w["week_number"] for w in week_settings],
+        format_func=lambda x: "--- Select Week ---"
+        if x is None
+        else WEEK_DATES.get(str(x), f"Week {x}"),
+    )
+
+    if selected_week:
+        week_data = next(w for w in week_settings if w["week_number"] == selected_week)
+        current_override = week_data.get("admin_override", False)
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.write(
+                f"**Week:** {WEEK_DATES.get(str(selected_week), f'Week {selected_week}')}"
+            )
+            st.write(
+                f"**Original Deadline:** {str(week_data.get('original_deadline', 'Unknown'))[:16]}"
+            )
+            st.write(
+                f"**Current Override:** {'✅ Enabled' if current_override else '❌ Disabled'}"
+            )
+
+        with col2:
+            new_override = st.radio(
+                "Admin Override:",
+                options=[False, True],
+                format_func=lambda x: "🔒 Follow Normal Deadline"
+                if not x
+                else "🔓 Allow Picks (Override)",
+                index=1 if current_override else 0,
+                key=f"individual_week_{selected_week}",
+            )
+
+            if st.button(f"💾 Update Week {selected_week}"):
+                if dm.set_week_override(selected_week, new_override):
+                    action = "enabled" if new_override else "disabled"
+                    st.success(f"✅ Admin override {action} for Week {selected_week}!")
+                    st.rerun()
+                else:
+                    st.error("Failed to update week setting.")
