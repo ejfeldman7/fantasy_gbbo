@@ -433,16 +433,16 @@ class DatabaseManager:
                     existing = self.conn.query(
                         "SELECT week_number FROM week_settings WHERE week_number = :week",
                         params=dict(week=week_num),
-                        ttl=0
+                        ttl=0,
                     )
-                    
+
                     if existing.empty:
                         s.execute(
                             text("""
                                 INSERT INTO week_settings (week_number, original_deadline) 
                                 VALUES (:week, :deadline)
                             """),
-                            params=dict(week=week_num, deadline=deadline)
+                            params=dict(week=week_num, deadline=deadline),
                         )
                 s.commit()
             return True
@@ -456,16 +456,27 @@ class DatabaseManager:
             # Get all week settings
             week_settings = self.conn.query("SELECT * FROM week_settings", ttl="30s")
             available_weeks = []
-            
+
             for _, week in week_settings.iterrows():
-                week_num = str(week['week_number'])
-                admin_override = week.get('admin_override', False)
-                original_deadline = week.get('original_deadline')
-                
+                week_num = str(week["week_number"])
+                admin_override = week.get("admin_override", False)
+                original_deadline = week.get("original_deadline")
+
                 # Allow if admin override is enabled OR if before original deadline
-                if admin_override or (original_deadline and current_time < original_deadline):
+                if admin_override:
                     available_weeks.append(week_num)
-            
+                elif original_deadline:
+                    # Ensure both datetimes have timezone info for comparison
+                    if original_deadline.tzinfo is None:
+                        # Assume UTC if no timezone info
+                        from datetime import timezone
+
+                        original_deadline = original_deadline.replace(
+                            tzinfo=timezone.utc
+                        )
+                    if current_time < original_deadline:
+                        available_weeks.append(week_num)
+
             return available_weeks
         except Exception as e:
             st.error(f"Error getting available weeks: {e}")
@@ -481,7 +492,7 @@ class DatabaseManager:
                         SET admin_override = :override, updated_at = CURRENT_TIMESTAMP 
                         WHERE week_number = :week
                     """),
-                    params=dict(override=override_enabled, week=week_number)
+                    params=dict(override=override_enabled, week=week_number),
                 )
                 s.commit()
             return True
@@ -492,8 +503,10 @@ class DatabaseManager:
     def get_week_settings(self) -> List[Dict]:
         """Get all week settings."""
         try:
-            result = self.conn.query("SELECT * FROM week_settings ORDER BY week_number", ttl="30s")
-            return result.to_dict('records') if not result.empty else []
+            result = self.conn.query(
+                "SELECT * FROM week_settings ORDER BY week_number", ttl="30s"
+            )
+            return result.to_dict("records") if not result.empty else []
         except Exception as e:
             st.error(f"Error getting week settings: {e}")
             return []

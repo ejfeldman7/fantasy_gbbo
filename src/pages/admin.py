@@ -466,7 +466,13 @@ def _show_week_settings_tab(dm: DataManager):
 
         # Check if naturally available
         now_utc = datetime.now(timezone.utc)
-        naturally_open = original_deadline and now_utc < original_deadline
+        naturally_open = False
+        if original_deadline:
+            # Ensure both datetimes have timezone info for comparison
+            if original_deadline.tzinfo is None:
+                # Assume UTC if no timezone info
+                original_deadline = original_deadline.replace(tzinfo=timezone.utc)
+            naturally_open = now_utc < original_deadline
 
         status = "🟢 Open" if (naturally_open or admin_override) else "🔴 Closed"
         if admin_override:
