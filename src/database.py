@@ -453,6 +453,8 @@ class DatabaseManager:
     def get_available_weeks(self, current_time) -> List[str]:
         """Get list of weeks that are currently available for picks."""
         try:
+            from datetime import timezone
+
             # Get all week settings
             week_settings = self.conn.query("SELECT * FROM week_settings", ttl="30s")
             available_weeks = []
@@ -467,15 +469,37 @@ class DatabaseManager:
                     available_weeks.append(week_num)
                 elif original_deadline:
                     # Ensure both datetimes have timezone info for comparison
-                    if original_deadline.tzinfo is None:
-                        # Assume UTC if no timezone info
-                        from datetime import timezone
+                    try:
+                        if (
+                            hasattr(original_deadline, "tzinfo")
+                            and original_deadline.tzinfo is None
+                        ):
+                            # Assume UTC if no timezone info
+                            original_deadline = original_deadline.replace(
+                                tzinfo=timezone.utc
+                            )
+                        elif not hasattr(original_deadline, "tzinfo"):
+                            # Handle pandas Timestamp objects
+                            if hasattr(original_deadline, "tz_localize"):
+                                original_deadline = original_deadline.tz_localize(
+                                    timezone.utc
+                                )
 
-                        original_deadline = original_deadline.replace(
-                            tzinfo=timezone.utc
+                        # Ensure current_time is timezone-aware
+                        if (
+                            hasattr(current_time, "tzinfo")
+                            and current_time.tzinfo is None
+                        ):
+                            current_time = current_time.replace(tzinfo=timezone.utc)
+
+                        if current_time < original_deadline:
+                            available_weeks.append(week_num)
+                    except Exception as tz_error:
+                        st.warning(
+                            f"Timezone conversion error for week {week_num}: {tz_error}"
                         )
-                    if current_time < original_deadline:
-                        available_weeks.append(week_num)
+                        # Skip this week on timezone errors
+                        continue
 
             return available_weeks
         except Exception as e:

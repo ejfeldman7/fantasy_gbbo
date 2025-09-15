@@ -469,10 +469,22 @@ def _show_week_settings_tab(dm: DataManager):
         naturally_open = False
         if original_deadline:
             # Ensure both datetimes have timezone info for comparison
-            if original_deadline.tzinfo is None:
-                # Assume UTC if no timezone info
-                original_deadline = original_deadline.replace(tzinfo=timezone.utc)
-            naturally_open = now_utc < original_deadline
+            try:
+                if (
+                    hasattr(original_deadline, "tzinfo")
+                    and original_deadline.tzinfo is None
+                ):
+                    # Assume UTC if no timezone info
+                    original_deadline = original_deadline.replace(tzinfo=timezone.utc)
+                elif not hasattr(original_deadline, "tzinfo"):
+                    # Handle pandas Timestamp objects
+                    if hasattr(original_deadline, "tz_localize"):
+                        original_deadline = original_deadline.tz_localize(timezone.utc)
+
+                naturally_open = now_utc < original_deadline
+            except Exception:
+                # If timezone handling fails, assume closed
+                naturally_open = False
 
         status = "🟢 Open" if (naturally_open or admin_override) else "🔴 Closed"
         if admin_override:
