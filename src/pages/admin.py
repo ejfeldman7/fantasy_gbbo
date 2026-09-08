@@ -150,6 +150,10 @@ def _show_episode_results_tab(dm: DataManager):
                 else 0,
             )
 
+        email_recap = st.checkbox(
+            "📧 Email me (commissioner) a recap + updated leaderboard", value=False
+        )
+
         if st.form_submit_button("Save Episode Results"):
             results_data = {
                 "star_baker": sb,
@@ -159,14 +163,46 @@ def _show_episode_results_tab(dm: DataManager):
             }
 
             if dm.save_weekly_results(int(result_week_key), results_data):
-                st.success(f"✅ Results for {WEEK_DATES.get(result_week_key)} saved!")
-
                 # If a baker was eliminated, mark them as eliminated in the database
                 if eb and eb != "":
                     dm.eliminate_baker(eb, int(result_week_key))
+
+                # Clear cached queries so scores update immediately everywhere.
+                st.cache_data.clear()
+                st.success(f"✅ Results for {WEEK_DATES.get(result_week_key)} saved!")
+                if eb and eb != "":
                     st.success(f"🏠 {eb} has been marked as eliminated.")
+
+                if email_recap:
+                    _email_weekly_recap(dm, result_week_key, results_data)
             else:
                 st.error("Failed to save results. Please try again.")
+
+
+def _email_weekly_recap(dm: DataManager, week_key: str, results_data: dict):
+    """Send the commissioner a recap email with the freshly-updated standings."""
+    from src.email_utils import send_commissioner_update_email
+    from src.scoring import calculate_user_scores
+
+    try:
+        scores = calculate_user_scores(dm)
+        rows = [
+            {
+                "Player": s["user_name"],
+                "Weekly": s["weekly_points"],
+                "Foresight": s["foresight_points"],
+                "Total": s["total_points"],
+            }
+            for s in scores.values()
+        ]
+        scores_df = (
+            pd.DataFrame(rows).sort_values("Total", ascending=False).reset_index(drop=True)
+        )
+        scores_df.index += 1
+        week_display = WEEK_DATES.get(week_key, f"Week {week_key}")
+        send_commissioner_update_email(week_display, results_data, scores_df)
+    except Exception as e:
+        st.warning(f"Results saved, but the recap email failed: {e}")
 
 
 def _show_manage_bakers_tab(dm: DataManager):
@@ -393,6 +429,7 @@ def _show_final_scoring_tab(dm: DataManager):
                         from src.scoring import run_final_scoring
 
                         if run_final_scoring(dm, final_winner, finalist_2, finalist_3):
+                            st.cache_data.clear()  # resolve foresight everywhere now
                             st.success(
                                 "✅ Final results saved and foresight points calculated!"
                             )
@@ -454,8 +491,9 @@ def _show_week_settings_tab(dm: DataManager):
         return
 
     # Display current settings in a table
-    from src.config import WEEK_DATES
     from datetime import datetime, timezone
+
+    from src.config import WEEK_DATES
 
     table_data = []
     for week in week_settings:

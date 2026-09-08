@@ -1,12 +1,14 @@
 import streamlit as st
 
+from src.config import FORESIGHT_BASE_WEEK
+
 
 def show_page():
     st.title("📖 Info Page")
     st.header("Welcome to the Great Fantasy Bake Off League!")
     st.markdown(
         """
-    On your marks, get set, predict! This season, we’re adding a new layer of fun to our weekly viewing with a fantasy league. 
+    On your marks, get set, predict! This season, we’re adding a new layer of fun to our weekly viewing with a fantasy league.
     The goal is simple: prove you have the best eye for baking talent by accurately predicting both the weekly events and the season's ultimate champions.
     """
     )
@@ -60,14 +62,22 @@ def show_page():
 
     st.write("#### 2. Foresight Points: The Weighted Bonus")
     st.markdown(
-        """
-    This is where strategy comes in. You get points for correctly predicting the season's winner and finalists, 
-    but correct predictions made **earlier in the season are worth exponentially more**.
+        f"""
+    This is where strategy comes in. You earn points for correctly predicting the season's
+    champion and finalists, and calls made **earlier in the season are worth far more**.
 
-    Your season outcome predictions are logged each week but scores will only be known when the winner is crowned. 
-    At the end of the season, we'll go back and award points for every single time you correctly predicted the outcome.
-    - **The Formula**: A correct pick is multiplied by a factor that decreases each week. A correct **winner** prediction is worth **10 base points**, and a correct **finalist** is worth **5**.
-    - **Example**: Correctly predicting the season winner in Week 2 is worth **90 points** `((11-2) x 10)`. Waiting until the semi-final in Week 9 to make that same correct prediction is only worth **20 points** `((11-9) x 10)`.
-    This is cumulative, so correct predictions in, for example, Weeks 3, 6, 8, and 10 would all be included in your total.
+    Your season predictions are logged every week, but foresight points stay hidden until the
+    winner is crowned — then they all resolve at once.
+
+    - **Champion**: correctly naming the eventual winner in your **Season Winner** slot is worth
+      `({FORESIGHT_BASE_WEEK} − week) × 10`.
+    - **Finalists**: each of the three actual finalists you named anywhere in your predictions
+      (the champion counts as a finalist too!) is worth `({FORESIGHT_BASE_WEEK} − week) × 5`.
+    - **Only your earliest correct week counts** for each pick. Re-submitting the same correct
+      prediction later doesn't stack — this rewards *conviction*, not repetition. So lock in a
+      call you believe in early and let it ride.
+    - **Example**: naming the winner in Week 2 is worth **{(FORESIGHT_BASE_WEEK - 2) * 10} points**
+      `(({FORESIGHT_BASE_WEEK}−2) × 10)`. Waiting until Week 9 to first make that same correct call
+      is worth only **{(FORESIGHT_BASE_WEEK - 9) * 10} points** `(({FORESIGHT_BASE_WEEK}−9) × 10)`.
     """
     )

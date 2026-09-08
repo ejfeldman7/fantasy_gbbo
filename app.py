@@ -3,13 +3,13 @@ Main Streamlit application for Fantasy GBBO - Updated for PostgreSQL
 """
 
 import streamlit as st
-from src.auth import normalize_email
-from src.data_manager import DataManager
+
 import src.pages.admin as admin_page
 import src.pages.info as info_page
 import src.pages.leaderboard as leaderboard_page
 import src.pages.submit_picks as submit_picks_page
-from src.auth import is_email_allowed
+from src.auth import is_email_allowed, normalize_email
+from src.data_manager import DataManager
 
 # Page configuration
 st.set_page_config(
@@ -55,7 +55,7 @@ def show_login_form(data_manager):
         st.write("""
         This is a fantasy league for The Great British Bake Off! Each week, you'll make predictions about:
         - ⭐ Who will be Star Baker
-        - 🏆 Who will win the Technical Challenge  
+        - 🏆 Who will win the Technical Challenge
         - 😢 Who will be eliminated
         - 🤝 Whether there will be a Hollywood Handshake
         - Plus season-long predictions for the winner and finalists!

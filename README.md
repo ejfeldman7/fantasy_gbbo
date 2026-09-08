@@ -136,18 +136,29 @@ Open your browser to `http://localhost:8501` 🎉
 Edit `src/config.py` to match the new season:
 
 ```python
-# Update week dates and deadlines
+# Set the finale week — everything downstream (foresight multiplier,
+# "season complete" detection) derives from this, so you never touch scoring.py.
+FINALE_WEEK = 10
+FORESIGHT_BASE_WEEK = FINALE_WEEK + 1  # already computed for you in config.py
+
+# Update week dates and deadlines (submission deadlines = Friday 00:00 PT).
+# Mind the US DST change in early November when setting UTC offsets.
 WEEK_DATES = {
     "2": "Week 2 (Date)",
     "3": "Week 3 (Date)",
-    # ... add all weeks
+    # ... add all weeks through the finale
 }
 
 REVEAL_DATES_UTC = {
-    "2": datetime(2025, 9, 19, 7, 0, 0, tzinfo=timezone.utc),
+    "2": datetime(2026, 10, 2, 7, 0, 0, tzinfo=timezone.utc),
     # ... submission deadlines for each week
 }
 ```
+
+> ℹ️ `config.py` ships with the real **2026 (Series 17)** schedule: UK broadcast Tuesdays
+> 22 Sep – 24 Nov 2026, Netflix US dropping each episode the following **Friday**. Picks run
+> Week 2 (Fri 10/2) through the Week 10 finale (Fri 11/27). Note Prue Leith left after 2025 and
+> Nigella Lawson joins Paul Hollywood as judge for this series.
 
 ### 🧹 Reset League Data
 
@@ -160,6 +171,27 @@ REVEAL_DATES_UTC = {
 1. **Admin Panel** → **Manage Bakers** tab
 2. Add each new baker to the roster
 3. Bakers are automatically tracked as eliminated during the season
+
+### 🔒 Close Registration (do this before you share the link!)
+
+By default, **anyone with the app URL can self-register**. For a private league,
+restrict it to your invited players by adding an allow-list to your secrets
+(locally in `.streamlit/secrets.toml`, or in the Streamlit Community Cloud
+**Settings → Secrets** panel for the deployed app):
+
+```toml
+[allowed_emails]
+emails = [
+    "friend1@example.com",
+    "friend2@example.com",
+]
+```
+
+> ⚠️ **Note on login:** players log in with just their email (no password), so this
+> is an honor-system league among people you trust — the allow-list controls *who
+> can register*, not impersonation. If you need stronger gating, add a shared league
+> passphrase. Also make sure `secrets.toml` is never committed (it's now in
+> `.gitignore`).
 
 ### 🚀 Season Ready!
 
@@ -209,13 +241,24 @@ fantasy-gbbo/
 | 😢 Eliminated Baker    | +5 pts  | -5 pts (if star baker) |
 | 🏆 Technical Winner    | +3 pts  | None                   |
 
-### Foresight Points (season finale)
+### Foresight Points (resolve at the finale)
 
-- **👑 Season Winner**: `(11 - week_number) × 10` points
-- **🥈🥉 Finalists**: `(11 - week_number) × 5` points each
-- **Strategy**: Earlier correct predictions = exponentially more points!
+Foresight points stay hidden until final results are entered, then resolve all at once.
+The multiplier is derived from `FORESIGHT_BASE_WEEK` in `src/config.py` (= `FINALE_WEEK + 1`),
+so it adapts automatically when the season length changes.
 
-Example: Correctly picking the winner in Week 2 = **90 points**, but waiting until Week 9 = only **20 points**
+- **👑 Season Winner**: `(FORESIGHT_BASE_WEEK - week_number) × 10` points
+- **🥈 Finalists**: `(FORESIGHT_BASE_WEEK - week_number) × 5` points each — **the champion counts as
+  a finalist**, and a finalist named in _any_ prediction slot earns credit.
+- **Earliest correct week only**: re-submitting the same correct pick later does **not** stack;
+  you're scored on the first week you got it right. This rewards conviction, not repetition.
+
+Example (with a Week 10 finale, base = 11): correctly naming the winner in Week 2 = **90 points**
+`((11-2) × 10)`; first making that same call in Week 9 = only **20 points** `((11-9) × 10)`.
+
+> **Note:** In the 2025 season the champion was excluded from the finalist pool, so correctly
+> calling a finalist who went on to win scored nothing. That bug is fixed, and the scoring engine
+> is now covered by unit tests in `tests/test_scoring.py`.
 
 ## 🛠️ Contributing
 

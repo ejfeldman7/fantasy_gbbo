@@ -2,11 +2,12 @@
 Database management module for Fantasy GBBO using PostgreSQL/Neon
 """
 
-import streamlit as st
-import pandas as pd
-from sqlalchemy import text
-from typing import Dict, List, Optional, Any
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+import pandas as pd
+import streamlit as st
+from sqlalchemy import text
 
 
 class DatabaseManager:
@@ -295,7 +296,7 @@ class DatabaseManager:
             JOIN users u ON wp.user_id = u.id
             ORDER BY wp.week_number, u.name
         """,
-            ttl="30s",
+            ttl="10s",
         )
 
     def get_all_picks_for_week(self, week: int) -> pd.DataFrame:
@@ -371,7 +372,7 @@ class DatabaseManager:
     def get_all_weekly_results(self) -> pd.DataFrame:
         """Get all weekly results."""
         return self.conn.query(
-            "SELECT * FROM weekly_results ORDER BY week_number", ttl="1m"
+            "SELECT * FROM weekly_results ORDER BY week_number", ttl="10s"
         )
 
     def save_final_results(self, winner: str, finalist_2: str, finalist_3: str) -> bool:
@@ -399,7 +400,7 @@ class DatabaseManager:
     def get_final_results(self) -> Optional[Dict]:
         """Get final season results."""
         try:
-            result = self.conn.query("SELECT * FROM final_results LIMIT 1", ttl="1m")
+            result = self.conn.query("SELECT * FROM final_results LIMIT 1", ttl="10s")
             return result.iloc[0].to_dict() if not result.empty else None
         except Exception as e:
             st.error(f"Error getting final results: {e}")
@@ -439,7 +440,7 @@ class DatabaseManager:
                     if existing.empty:
                         s.execute(
                             text("""
-                                INSERT INTO week_settings (week_number, original_deadline) 
+                                INSERT INTO week_settings (week_number, original_deadline)
                                 VALUES (:week, :deadline)
                             """),
                             params=dict(week=week_num, deadline=deadline),
@@ -453,14 +454,15 @@ class DatabaseManager:
     def _ensure_timezone_aware(self, dt, default_tz=None):
         """Helper method to ensure datetime is timezone-aware."""
         from datetime import timezone
+
         import pandas as pd
-        
+
         if default_tz is None:
             default_tz = timezone.utc
-        
+
         if dt is None:
             return None
-            
+
         try:
             if isinstance(dt, pd.Timestamp):
                 if dt.tz is None:
@@ -501,7 +503,7 @@ class DatabaseManager:
                 if admin_override:
                     available_weeks.append(week_num)
                     continue
-                    
+
                 # Check original deadline
                 if original_deadline is not None:
                     original_deadline = self._ensure_timezone_aware(original_deadline)
@@ -519,8 +521,8 @@ class DatabaseManager:
             with self.conn.session as s:
                 s.execute(
                     text("""
-                        UPDATE week_settings 
-                        SET admin_override = :override, updated_at = CURRENT_TIMESTAMP 
+                        UPDATE week_settings
+                        SET admin_override = :override, updated_at = CURRENT_TIMESTAMP
                         WHERE week_number = :week
                     """),
                     params=dict(override=override_enabled, week=week_number),
