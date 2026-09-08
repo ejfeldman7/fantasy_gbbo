@@ -2,11 +2,12 @@
 Database management module for Fantasy GBBO using PostgreSQL/Neon
 """
 
-import streamlit as st
-import pandas as pd
-from sqlalchemy import text
-from typing import Dict, List, Optional, Any
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+import pandas as pd
+import streamlit as st
+from sqlalchemy import text
 
 
 class DatabaseManager:
@@ -439,7 +440,7 @@ class DatabaseManager:
                     if existing.empty:
                         s.execute(
                             text("""
-                                INSERT INTO week_settings (week_number, original_deadline) 
+                                INSERT INTO week_settings (week_number, original_deadline)
                                 VALUES (:week, :deadline)
                             """),
                             params=dict(week=week_num, deadline=deadline),
@@ -453,14 +454,15 @@ class DatabaseManager:
     def _ensure_timezone_aware(self, dt, default_tz=None):
         """Helper method to ensure datetime is timezone-aware."""
         from datetime import timezone
+
         import pandas as pd
-        
+
         if default_tz is None:
             default_tz = timezone.utc
-        
+
         if dt is None:
             return None
-            
+
         try:
             if isinstance(dt, pd.Timestamp):
                 if dt.tz is None:
@@ -501,7 +503,7 @@ class DatabaseManager:
                 if admin_override:
                     available_weeks.append(week_num)
                     continue
-                    
+
                 # Check original deadline
                 if original_deadline is not None:
                     original_deadline = self._ensure_timezone_aware(original_deadline)
@@ -519,8 +521,8 @@ class DatabaseManager:
             with self.conn.session as s:
                 s.execute(
                     text("""
-                        UPDATE week_settings 
-                        SET admin_override = :override, updated_at = CURRENT_TIMESTAMP 
+                        UPDATE week_settings
+                        SET admin_override = :override, updated_at = CURRENT_TIMESTAMP
                         WHERE week_number = :week
                     """),
                     params=dict(override=override_enabled, week=week_number),

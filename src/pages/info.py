@@ -8,7 +8,7 @@ def show_page():
     st.header("Welcome to the Great Fantasy Bake Off League!")
     st.markdown(
         """
-    On your marks, get set, predict! This season, we’re adding a new layer of fun to our weekly viewing with a fantasy league. 
+    On your marks, get set, predict! This season, we’re adding a new layer of fun to our weekly viewing with a fantasy league.
     The goal is simple: prove you have the best eye for baking talent by accurately predicting both the weekly events and the season's ultimate champions.
     """
     )

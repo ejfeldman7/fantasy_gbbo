@@ -1,0 +1,15 @@
+# Ruff configuration for CI (`ruff check .`).
+#
+# Pin an explicit rule set so linting is reproducible across ruff versions.
+# Without this file, `pip install ruff` in CI tracks the latest release, whose
+# default rules drift over time — which is why previously-green CI started
+# failing on unchanged, pre-existing code.
+#
+# Selection = ruff's classic default (E4/E7/E9 + F: real errors + pyflakes)
+# plus pycodestyle warnings (W) and import sorting (I). The opinionated
+# modernization rules (UP, BLE, C4, SIM, ...) are intentionally left opt-in so
+# the existing codebase style isn't churned; enable them deliberately later if
+# you want to modernize.
+
+[lint]
+select = ["E4", "E7", "E9", "F", "W", "I"]

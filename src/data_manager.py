@@ -2,10 +2,12 @@
 Updated data manager that uses PostgreSQL instead of JSON files
 """
 
-from .database import DatabaseManager
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
+
 import streamlit as st
 from sqlalchemy import text
+
+from .database import DatabaseManager
 
 
 class DataManager:

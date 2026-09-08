@@ -491,8 +491,9 @@ def _show_week_settings_tab(dm: DataManager):
         return
 
     # Display current settings in a table
-    from src.config import WEEK_DATES
     from datetime import datetime, timezone
+
+    from src.config import WEEK_DATES
 
     table_data = []
     for week in week_settings:
