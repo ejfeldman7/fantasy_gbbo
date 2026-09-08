@@ -88,7 +88,7 @@ def send_commissioner_update_email(
             <li><strong>⭐ Star Baker:</strong> {results.get('star_baker', 'N/A')}</li>
             <li><strong>🏆 Technical Winner:</strong> {results.get('technical_winner', 'N/A')}</li>
             <li><strong>😢 Eliminated Baker:</strong> {results.get('eliminated_baker', 'N/A')}</li>
-            <li><strong>🤝 Handshake Given:</strong> {'Yes' if results.get('handshake_given') else 'No'}</li>
+            <li><strong>🤝 Handshake Given:</strong> {'Yes' if results.get('hollywood_handshake') else 'No'}</li>
         </ul><h3>Updated Leaderboard:</h3>{scores_html}
     </div></body></html>
     """

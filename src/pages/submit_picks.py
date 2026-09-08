@@ -121,20 +121,35 @@ def show_page(data_manager: DataManager, user_email: str):
         )
 
     st.markdown("---")
+
+    # Collect blocking conflicts — these are hard errors, not just warnings, so
+    # contradictory picks can never be saved (they produced junk scores in 2025).
+    conflicts = []
     if eb in {sb, tw}:
-        st.warning(
-            f"**Conflict:** You have **{eb}** as both eliminated and a weekly winner."
+        conflicts.append(
+            f"**{eb}** can't be both your eliminated baker and a weekly winner."
         )
     if eb in {sw, f1, f2}:
-        st.warning(
-            f"**Conflict:** You have **{eb}** as both eliminated and a season finalist/winner."
+        conflicts.append(
+            f"**{eb}** can't be both eliminated and a season finalist/winner."
         )
     if len({sw, f1, f2}) < 3:
-        st.warning(
-            "**Conflict:** Your Season Winner and Finalists must be three different people."
+        conflicts.append(
+            "Your Season Winner and two Finalists must be three different people."
         )
 
-    if st.button("Submit & Lock In Picks", key=f"submit_{user['id']}_{selected_week}"):
+    for c in conflicts:
+        st.warning(f"⚠️ {c}")
+
+    if st.button(
+        "Submit & Lock In Picks",
+        key=f"submit_{user['id']}_{selected_week}",
+        disabled=bool(conflicts),
+    ):
+        if conflicts:
+            st.error("Please resolve the conflicts above before submitting.")
+            return
+
         picks_data = {
             "star_baker": sb,
             "technical_winner": tw,
@@ -149,6 +164,7 @@ def show_page(data_manager: DataManager, user_email: str):
         if data_manager.save_user_picks(user_email, selected_week, picks_data):
             week_display = WEEK_DATES.get(selected_week, f"Week {selected_week}")
             st.success(f"✅ Your picks for {week_display} have been submitted!")
+            st.cache_data.clear()  # so the leaderboard/history reflect this immediately
             rain(emoji="🍰", font_size=54, falling_speed=3, animation_length="5s")
 
             # Send confirmation email

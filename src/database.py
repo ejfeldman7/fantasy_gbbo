@@ -295,7 +295,7 @@ class DatabaseManager:
             JOIN users u ON wp.user_id = u.id
             ORDER BY wp.week_number, u.name
         """,
-            ttl="30s",
+            ttl="10s",
         )
 
     def get_all_picks_for_week(self, week: int) -> pd.DataFrame:
@@ -371,7 +371,7 @@ class DatabaseManager:
     def get_all_weekly_results(self) -> pd.DataFrame:
         """Get all weekly results."""
         return self.conn.query(
-            "SELECT * FROM weekly_results ORDER BY week_number", ttl="1m"
+            "SELECT * FROM weekly_results ORDER BY week_number", ttl="10s"
         )
 
     def save_final_results(self, winner: str, finalist_2: str, finalist_3: str) -> bool:
@@ -399,7 +399,7 @@ class DatabaseManager:
     def get_final_results(self) -> Optional[Dict]:
         """Get final season results."""
         try:
-            result = self.conn.query("SELECT * FROM final_results LIMIT 1", ttl="1m")
+            result = self.conn.query("SELECT * FROM final_results LIMIT 1", ttl="10s")
             return result.iloc[0].to_dict() if not result.empty else None
         except Exception as e:
             st.error(f"Error getting final results: {e}")
