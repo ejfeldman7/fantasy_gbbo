@@ -32,9 +32,10 @@ def is_email_allowed(user_email: str) -> bool:
             )
             return False
     except (KeyError, FileNotFoundError):
-        st.warning("Allowed email list not found")
-        # If the secret is not defined, allow everyone to register as a fallback.
-        # This maintains original functionality if the feature isn't configured.
+        # If the secret is not defined, allow everyone to register as a fallback
+        # (keeps local/dev working). This is silent by design — don't leak config
+        # state to end users. To CLOSE registration, set [allowed_emails] in
+        # secrets (see README "Setting Up for a New Season").
         return True
 
     normalized_allowed_list = [normalize_email(email) for email in allowed_emails_raw]

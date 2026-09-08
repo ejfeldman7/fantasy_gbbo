@@ -172,6 +172,27 @@ REVEAL_DATES_UTC = {
 2. Add each new baker to the roster
 3. Bakers are automatically tracked as eliminated during the season
 
+### 🔒 Close Registration (do this before you share the link!)
+
+By default, **anyone with the app URL can self-register**. For a private league,
+restrict it to your invited players by adding an allow-list to your secrets
+(locally in `.streamlit/secrets.toml`, or in the Streamlit Community Cloud
+**Settings → Secrets** panel for the deployed app):
+
+```toml
+[allowed_emails]
+emails = [
+    "friend1@example.com",
+    "friend2@example.com",
+]
+```
+
+> ⚠️ **Note on login:** players log in with just their email (no password), so this
+> is an honor-system league among people you trust — the allow-list controls *who
+> can register*, not impersonation. If you need stronger gating, add a shared league
+> passphrase. Also make sure `secrets.toml` is never committed (it's now in
+> `.gitignore`).
+
 ### 🚀 Season Ready!
 
 Your league is now configured for the new season of Bake Off!

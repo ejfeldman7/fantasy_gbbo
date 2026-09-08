@@ -47,7 +47,7 @@ def send_confirmation_email(
     msg.set_content("This is a fallback for plain-text email clients.")
     msg.add_alternative(body, subtype="html")
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as smtp:
             smtp.login(sender_email, sender_password)
             smtp.send_message(msg)
         st.info(f"A confirmation email was sent to {recipient_email}.")
@@ -95,7 +95,7 @@ def send_commissioner_update_email(
     msg.set_content("This is a fallback for plain-text email clients.")
     msg.add_alternative(body, subtype="html")
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as smtp:
             smtp.login(sender_email, sender_password)
             smtp.send_message(msg)
         st.info(f"An update email has been sent to the commissioner at {commissioner_email}.")
